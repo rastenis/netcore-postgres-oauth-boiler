@@ -9,39 +9,40 @@ using netcore_postgres_oauth_boiler.Models;
 
 namespace netcore_postgres_oauth_boiler.Controllers
 {
-	 public class HomeController : Controller
+	 public class AuthController : Controller
 	 {
-		  private readonly ILogger<HomeController> _logger;
+		  private readonly ILogger<AuthController> _logger;
 
-		  public HomeController(ILogger<HomeController> logger)
+		  public AuthController(ILogger<AuthController> logger)
 		  {
 				_logger = logger;
 		  }
 
-		  public IActionResult Index()
+		  [HttpPost]
+		  public IActionResult Login([FromForm] string email, [FromForm] string password)
 		  {
-				return View();
+				Console.WriteLine("Logging in with ", email, password);
+				return Redirect("/");
 		  }
 
-		  public IActionResult Login()
+		  [HttpPost]
+		  public IActionResult Register([FromForm] string email, [FromForm] string password)
 		  {
-				return View();
+				Console.WriteLine("Registering with ", email, password);
+				return Ok();
 		  }
 
+		  [HttpGet]
 		  public IActionResult Register()
 		  {
-				return View();
+				Console.WriteLine("ssss with ");
+				return Ok("OKAY");
 		  }
 
 		  [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
 		  public IActionResult Error()
 		  {
 				return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
-		  }
-
-		  public new IActionResult NotFound()
-		  {
-				return View();
 		  }
 	 }
 }
