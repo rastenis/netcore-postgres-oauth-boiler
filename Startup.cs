@@ -48,7 +48,7 @@ namespace netcore_postgres_oauth_boiler
 						  name: "default",
 						  pattern: "{controller=Home}/{action=Index}/{id?}");
 
-					
+
 					 endpoints.MapControllerRoute("Catch", "{*url}", defaults: new { controller = "Home", action = "NotFound" });
 				});
 		  }
