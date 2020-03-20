@@ -11,11 +11,15 @@ namespace netcore_postgres_oauth_boiler.Controllers
 {
 	 public class AuthController : Controller
 	 {
+
+		  private readonly DatabaseContext _context;
+
 		  private readonly ILogger<AuthController> _logger;
 
-		  public AuthController(ILogger<AuthController> logger)
+		  public AuthController(ILogger<AuthController> logger, DatabaseContext context)
 		  {
 				_logger = logger;
+				_context = context;
 		  }
 
 		  [HttpPost]
@@ -26,9 +30,11 @@ namespace netcore_postgres_oauth_boiler.Controllers
 		  }
 
 		  [HttpPost]
-		  public IActionResult Register([FromForm] string email, [FromForm] string password)
+		  public async Task<IActionResult> Register([FromForm] string email, [FromForm] string password)
 		  {
 				Console.WriteLine("Registering with ", email, password);
+				_context.Users.Add(new User("", ""));
+				await _context.SaveChangesAsync();
 				return Ok();
 		  }
 
