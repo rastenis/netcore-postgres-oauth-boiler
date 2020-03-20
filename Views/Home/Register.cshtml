@@ -1,0 +1,24 @@
+﻿@{
+	 ViewData["Title"] = "Register";
+}
+<h2>@ViewData["Title"]</h2>
+
+<form class="col s12" action="/register" method="post">
+	 <div class="row">
+	 	 <div class="input-field col s12">
+	 	 	 <input id="email" type="email" class="validate">
+	 	 	 <label for="email">Email</label>
+	 	 </div>
+	 </div>
+	 <div class="row">
+	 	 <div class="input-field col s6">
+	 	 	 <input placeholder="Placeholder" id="password" type="text">
+	 	 	 <label for="password">Password</label>
+	 	 </div>
+	 	 <div class="input-field col s6">
+	 	 	 <input id="password_conf" type="text">
+	 	 	 <label for="password_conf">Repeat Password</label>
+	 	 </div>
+	 </div>
+	 <button class="waves-effect waves-light btn" type="submit" >Submit</button>
+</form>
