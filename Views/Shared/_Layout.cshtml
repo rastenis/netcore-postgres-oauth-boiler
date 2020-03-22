@@ -49,14 +49,17 @@
 </html>
 
 <script type="text/javascript">
-     // Info boxes
-     document.addEventListener('DOMContentLoaded', (event) => {
-          if ('@ViewData["info"]'!=null && '@ViewData["info"]'!="" ) {
-                M.toast({ html: '@ViewData["info"]' });
-          }
+    // Info box display
 
-          if ('@ViewData["error"]'!=null && '@ViewData["error"]'!="" ) {
-                M.toast({ html: '@ViewData["error"]', classes: "red" });
-          }
-     })
+    // TempData persists through redirects, but uses the session
+    // Use ViewData for passing regular data, such as in the HomeController -> Index example
+    document.addEventListener('DOMContentLoaded', () => {
+        if ('@TempData["info"]' != null && '@TempData["info"]' != "") {
+            M.toast({ html: '@TempData["info"]' });
+        }
+
+        if ('@TempData["error"]' != null && '@TempData["error"]' != "") {
+            M.toast({ html: '@TempData["error"]', classes: "red" });
+        }
+    });
 </script>

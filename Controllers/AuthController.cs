@@ -46,7 +46,7 @@ namespace netcore_postgres_oauth_boiler.Controllers
             // Disallowing already logged-in users
             if (HttpContext.Session.GetString("user") != null)
             {
-                ViewData["error"] = "You are already logged in!";
+                TempData["error"] = "You are already logged in!";
                 return View("Login");
             }
 
@@ -56,7 +56,7 @@ namespace netcore_postgres_oauth_boiler.Controllers
             // Checking if user exists and verifying password
             if (user == null || !BCrypt.Net.BCrypt.Verify(password, user.password))
             {
-                ViewData["error"] = "Incorrect email or password!";
+                TempData["error"] = "Incorrect email or password!";
                 return View("Login");
             }
 
@@ -64,10 +64,10 @@ namespace netcore_postgres_oauth_boiler.Controllers
             HttpContext.Session.SetString("user", user.id);
 
             // Setting info alert to be shown
-            ViewData["info"] = "You have logged in!";
+            TempData["info"] = "You have logged in!";
 
             // Rendering index
-            return View("~/Views/Home/Index.cshtml");
+            return Redirect("/");
         }
 
         [HttpPost]
@@ -80,14 +80,14 @@ namespace netcore_postgres_oauth_boiler.Controllers
             // Verifying user is not logged in
             if (HttpContext.Session.GetString("user") != null)
             {
-                ViewData["error"] = "You are already logged in!";
+                TempData["error"] = "You are already logged in!";
                 return View("Register");
             }
 
             // Verifying data
             if (email == null || password == null)
             {
-                ViewData["error"] = "Missing username or password!";
+                TempData["error"] = "Missing username or password!";
                 return View("Register");
             }
 
@@ -95,7 +95,7 @@ namespace netcore_postgres_oauth_boiler.Controllers
             var count = await _context.Users.Where(c => Regex.IsMatch(c.email, email)).CountAsync();
             if (count != 0)
             {
-                ViewData["error"] = "This email is already taken!";
+                TempData["error"] = "This email is already taken!";
                 return View("Register");
             }
 
@@ -108,9 +108,9 @@ namespace netcore_postgres_oauth_boiler.Controllers
             HttpContext.Session.SetString("user", u.id);
 
             // Setting info alert
-            ViewData["info"] = "You have successfully registered!";
+            TempData["info"] = "You have successfully registered!";
 
-            return View("~/Views/Home/Index.cshtml");
+            return Redirect("/");
         }
 
         [HttpGet]
@@ -123,7 +123,6 @@ namespace netcore_postgres_oauth_boiler.Controllers
             return Ok("You are: " + c ?? "not logged in.");
         }
 
-
         [HttpGet]
         public async Task<IActionResult> Logout()
         {
@@ -132,8 +131,8 @@ namespace netcore_postgres_oauth_boiler.Controllers
                 await HttpContext.Session.LoadAsync();
             HttpContext.Session.Clear();
 
-            ViewData["info"] = "You have logged out!";
-            return View("~/Views/Home/Index.cshtml");
+            TempData["info"] = "You have logged out!";
+            return Redirect("/");
         }
 
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]

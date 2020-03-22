@@ -1,12 +1,42 @@
 ﻿@{
     ViewData["Title"] = "Home Page";
 }
+@using Microsoft.AspNetCore.Http
 
-<div class="text-center">
-    <h1>Welcome</h1>
-    <p>Log in to view private information.</p>
-    <hr />
-    <p>Learn more about the <a href="https://materializecss.com/getting-started.html">Materialize UI kit</a>.</p>
-    <p>Learn more about <a href="https://www.postgresql.org/docs/12/tutorial-start.html">PostgreSQL</a>.</p>
-    <p>Learn about <a href="https://docs.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
-</div>
+@model SampleDataListModel
+
+    <div class="text-center">
+        <h1>Welcome</h1>
+        @if (Context.Session.GetString("user") == null)
+        {
+            <p>Log in to view private information.</p>
+        }
+        else
+        {
+            <p><b>Passing data via model:</b></p>
+            <ul class="collection">
+                @foreach (SampleDataModel m in this.Model.SampleList)
+                {
+                    <li class="collection-item"><b>Name:</b> @m.Name, <b>Address:</b> @m.Address</li>
+                }
+            </ul>
+            <hr />
+
+            <p><b>Passing data via ViewData:</b></p>
+            <p>@ViewData["dataTitle"]</p>
+
+            var list = ViewData["data"].ToString().Split(",");
+
+            <ul class="collection">
+                @foreach (string m in @list)
+                {
+                    <li class="collection-item">@m</li>
+                }
+            </ul>
+        }
+        <hr />
+        <p>Learn more about the <a href="https://materializecss.com/getting-started.html">Materialize UI kit</a>.</p>
+        <p>Learn more about <a href="https://www.postgresql.org/docs/12/tutorial-start.html">PostgreSQL</a>.</p>
+        <p>Learn about <a href="https://docs.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
+
+    </div>

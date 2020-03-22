@@ -3,23 +3,36 @@
 }
 <h2>@ViewData["Title"]</h2>
 
-<form class="col s12 compactForm" action="/Auth/Register" method="post">
+<form class="col s12 compactForm" id="registrationForm" action="/Auth/Register" method="post" onsubmit="return register()">
     <div class="row">
         <div class="input-field col s12">
-            <input id="email" name="email" type="email" class="validate">
+            <input id="email" name="email" type="email" class="validate" required>
             <label for="email">Email</label>
         </div>
     </div>
     <div class="row">
         <div class="input-field col s6">
-            <input placeholder="Placeholder" name="password" id="password" type="text">
+            <input placeholder="Password" name="password" id="password" type="password" required>
             <label for="password">Password</label>
         </div>
         <div class="input-field col s6">
-            <input id="password_conf" type="text">
+            <input id="password_conf" type="password" placeholder="Repeat password" required>
             <label for="password_conf">Repeat Password</label>
         </div>
     </div>
     <button class="waves-effect waves-light btn" type="submit">Submit</button>
 </form>
 
+<script>
+    function register() {
+
+        if (document.getElementById("password").value != document.getElementById("password_conf").value) {
+            M.toast({ html: "Passwords do not match!", classes: "red" });
+            return false;
+        }
+
+        // Not verifying password requirements here, although you can if you want.
+
+        // Going on to submit...
+    }
+</script>
