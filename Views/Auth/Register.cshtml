@@ -1,25 +1,25 @@
 ﻿@{
-	 ViewData["Title"] = "Register";
+    ViewData["Title"] = "Register";
 }
 <h2>@ViewData["Title"]</h2>
 
 <form class="col s12 compactForm" action="/Auth/Register" method="post">
-	 <div class="row">
-	 	 <div class="input-field col s12">
-	 	 	 <input id="email" name="email" type="email" class="validate">
-	 	 	 <label for="email">Email</label>
-	 	 </div>
-	 </div>
-	 <div class="row">
-	 	 <div class="input-field col s6">
-	 	 	 <input placeholder="Placeholder" name="password" id="password" type="text">
-	 	 	 <label for="password">Password</label>
-	 	 </div>
-	 	 <div class="input-field col s6">
-	 	 	 <input id="password_conf" type="text">
-	 	 	 <label for="password_conf">Repeat Password</label>
-	 	 </div>
-	 </div>
-	 <button class="waves-effect waves-light btn" type="submit">Submit</button>
+    <div class="row">
+        <div class="input-field col s12">
+            <input id="email" name="email" type="email" class="validate">
+            <label for="email">Email</label>
+        </div>
+    </div>
+    <div class="row">
+        <div class="input-field col s6">
+            <input placeholder="Placeholder" name="password" id="password" type="text">
+            <label for="password">Password</label>
+        </div>
+        <div class="input-field col s6">
+            <input id="password_conf" type="text">
+            <label for="password_conf">Repeat Password</label>
+        </div>
+    </div>
+    <button class="waves-effect waves-light btn" type="submit">Submit</button>
 </form>
 

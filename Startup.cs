@@ -12,65 +12,65 @@ using netcore_postgres_oauth_boiler.Models;
 
 namespace netcore_postgres_oauth_boiler
 {
-	 public class Startup
-	 {
-		  public Startup(IConfiguration configuration)
-		  {
-				Configuration = configuration;
-		  }
+    public class Startup
+    {
+        public Startup(IConfiguration configuration)
+        {
+            Configuration = configuration;
+        }
 
-		  public IConfiguration Configuration { get; }
+        public IConfiguration Configuration { get; }
 
-		  // This method gets called by the runtime. Use this method to add services to the container.
-		  public void ConfigureServices(IServiceCollection services)
-		  {
-				services.AddDistributedMemoryCache();
+        // This method gets called by the runtime. Use this method to add services to the container.
+        public void ConfigureServices(IServiceCollection services)
+        {
+            services.AddDistributedMemoryCache();
 
-				services.AddSession(options =>
-				{
-					 options.IdleTimeout = TimeSpan.FromDays(1);
-					 options.Cookie.HttpOnly = true;
-					 options.Cookie.IsEssential = true;
-				});
+            services.AddSession(options =>
+            {
+                options.IdleTimeout = TimeSpan.FromDays(1);
+                options.Cookie.HttpOnly = true;
+                options.Cookie.IsEssential = true;
+            });
 
-				services.AddMvc().SetCompatibilityVersion(Microsoft.AspNetCore.Mvc.CompatibilityVersion.Latest);
-				services.AddControllersWithViews();
+            services.AddMvc().SetCompatibilityVersion(Microsoft.AspNetCore.Mvc.CompatibilityVersion.Latest);
+            services.AddControllersWithViews();
 
-				services.AddDbContext<DatabaseContext>(options =>
-					 options.UseNpgsql(Configuration.GetConnectionString("DefaultConnection")));
-		  }
+            services.AddDbContext<DatabaseContext>(options =>
+                 options.UseNpgsql(Configuration.GetConnectionString("DefaultConnection")));
+        }
 
-		  // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
-		  public void Configure(IApplicationBuilder app, IWebHostEnvironment env, DatabaseContext context)
-		  {
-				context.Database.Migrate();
-
-
-				if (env.IsDevelopment())
-				{
-					 app.UseDeveloperExceptionPage();
-				}
-				else
-				{
-					 app.UseExceptionHandler("/Home/Error");
-				}
-
-				app.UseStaticFiles();
-				app.UseSession();
-				app.UseRouting();
-				app.UseCors();
-				app.UseAuthentication();
-				app.UseAuthorization();
-
-				app.UseEndpoints(endpoints =>
-				{
-					 endpoints.MapControllerRoute(
-						  name: "default",
-						  pattern: "{controller=Home}/{action=Index}/{id?}");
+        // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
+        public void Configure(IApplicationBuilder app, IWebHostEnvironment env, DatabaseContext context)
+        {
+            context.Database.Migrate();
 
 
-					 endpoints.MapControllerRoute("Catch", "{*url}", defaults: new { controller = "Home", action = "NotFound" });
-				});
-		  }
-	 }
+            if (env.IsDevelopment())
+            {
+                app.UseDeveloperExceptionPage();
+            }
+            else
+            {
+                app.UseExceptionHandler("/Home/Error");
+            }
+
+            app.UseStaticFiles();
+            app.UseSession();
+            app.UseRouting();
+            app.UseCors();
+            app.UseAuthentication();
+            app.UseAuthorization();
+
+            app.UseEndpoints(endpoints =>
+            {
+                endpoints.MapControllerRoute(
+                         name: "default",
+                         pattern: "{controller=Home}/{action=Index}/{id?}");
+
+
+                endpoints.MapControllerRoute("Catch", "{*url}", defaults: new { controller = "Home", action = "NotFound" });
+            });
+        }
+    }
 }
