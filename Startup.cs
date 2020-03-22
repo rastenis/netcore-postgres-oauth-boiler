@@ -56,7 +56,7 @@ namespace netcore_postgres_oauth_boiler
 				}
 
 				app.UseStaticFiles();
-
+				app.UseSession();
 				app.UseRouting();
 				app.UseCors();
 				app.UseAuthentication();

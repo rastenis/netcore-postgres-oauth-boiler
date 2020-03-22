@@ -30,6 +30,15 @@ namespace netcore_postgres_oauth_boiler.Controllers
 		  {
 				Console.WriteLine("Logging in with ", email, password);
 
+				// Loading session
+				if (!HttpContext.Session.IsAvailable)
+					 await HttpContext.Session.LoadAsync();
+
+				if (HttpContext.Session.GetString("user") != null)
+				{
+					 return BadRequest("You are already logged in!");
+				}
+
 				BadRequestObjectResult failure = BadRequest("Wrong email/password combination!");
 				var user = await _context.Users.Where(c => Regex.IsMatch(c.email, email)).FirstOrDefaultAsync();
 
@@ -43,9 +52,6 @@ namespace netcore_postgres_oauth_boiler.Controllers
 					 return failure;
 				}
 
-				// Assigning session
-				if (!HttpContext.Session.IsAvailable)
-					 await HttpContext.Session.LoadAsync();
 				HttpContext.Session.SetString("user", user.id);
 
 				return Redirect("/");
@@ -54,28 +60,49 @@ namespace netcore_postgres_oauth_boiler.Controllers
 		  [HttpPost]
 		  public async Task<IActionResult> Register([FromForm] string email, [FromForm] string password)
 		  {
-				Console.WriteLine("Registering with ", email, password);
+				// Loading session
+				if (!HttpContext.Session.IsAvailable)
+					 await HttpContext.Session.LoadAsync();
 
+				if (HttpContext.Session.GetString("user")!=null)
+				{
+					 return BadRequest("You are already logged in!");
+				}
+
+				if (email==null || password==null)
+				{
+					 return BadRequest("Missing username or password!");
+				}
+
+				// Checking for duplicates
 				var count = await _context.Users.Where(c => Regex.IsMatch(c.email, email)).CountAsync();
 				if (count != 0)
 				{
 					 return BadRequest("This email is already taken!");
 				}
 
+				// Saving the user
 				User u = new User(email, password);
 				_context.Users.Add(u);
 				await _context.SaveChangesAsync();
 
-				// Assigning session
-				if (!HttpContext.Session.IsAvailable)
-					 await HttpContext.Session.LoadAsync();
 				HttpContext.Session.SetString("user", u.id);
 
-				return Ok();
+				return Ok("You have successfully registered!");
+		  }
+
+		  [HttpGet]
+		  public async Task<IActionResult> SessionTest()
+		  {
+				if (!HttpContext.Session.IsAvailable)
+					 await HttpContext.Session.LoadAsync();
+				var c = HttpContext.Session.GetString("user");
+
+				return Ok("You are: "+c);
 		  }
 
 
-		  [HttpPost]
+		  [HttpGet]
 		  public async Task<IActionResult> Logout()
 		  {
 				// Removing session
@@ -83,7 +110,7 @@ namespace netcore_postgres_oauth_boiler.Controllers
 					 await HttpContext.Session.LoadAsync();
 				HttpContext.Session.Clear();
 
-				return Ok();
+				return Redirect("/");
 		  }
 
 		  [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]

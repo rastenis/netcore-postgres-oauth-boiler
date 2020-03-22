@@ -4,22 +4,35 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using BCrypt;
+using System.ComponentModel.DataAnnotations.Schema;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Storage;
 
 namespace netcore_postgres_oauth_boiler.Models
 {
-
-
 	 public class DatabaseContext : DbContext
 	 {
 		  public DatabaseContext(DbContextOptions<DatabaseContext> options)
 	 : base(options)
-		  { }
+		  {
+
+				try
+				{
+					 var databaseCreator = (Database.GetService<IDatabaseCreator>() as RelationalDatabaseCreator);
+					 databaseCreator.CreateTables();
+				}
+				catch (Exception e)
+				{
+					 // Ignoring exception if tables already exist.
+				}
+		  }
 	
 
 		  public DbSet<User> Users { get; set; }
 		  public DbSet<Credential> Credentials { get; set; }
 	 }
 
+	 [Table("users")]
 	 public class User
 	 {
 		  public User(string email, string password, Credential credential)
@@ -43,6 +56,7 @@ namespace netcore_postgres_oauth_boiler.Models
 		  public List<Credential> credentials { get; set; }
 	 }
 
+	 [Table("credentials")]
 	 public class Credential
 	 {
 		  public string id { get; set; }
