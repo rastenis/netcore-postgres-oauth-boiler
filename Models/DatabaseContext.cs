@@ -50,6 +50,11 @@ namespace netcore_postgres_oauth_boiler.Models
             this.email = email;
             this.password = BCrypt.Net.BCrypt.HashPassword(password);
         }
+
+        public User()
+        {
+        }
+
         public string id { get; set; }
         public string email { get; set; }
         public string password { get; set; }

@@ -12,11 +12,11 @@
 </head>
 <body>
     <header>
-        <nav>
+        <nav class="light-blue">
             <div class="nav-wrapper">
-                <a asp-area="" asp-controller="Home" asp-action="Index" class="brand-logo">boiler</a>
+                <a style="padding-left:1vw;" asp-area="" asp-controller="Home" asp-action="Index" class="brand-logo">boiler</a>
                 <ul id="nav-mobile" class="right hide-on-med-and-down">
-                    <li><a style="float:left;" asp-area="" asp-controller="Home" asp-action="Index">Home</a></li>
+                    <li><a asp-area="" asp-controller="Home" asp-action="Index">Home</a></li>
                     @if (Context.Session.GetString("user") == null)
                     {
                         <li><a asp-area="" asp-controller="Auth" asp-action="Login">Login</a></li>
@@ -35,7 +35,7 @@
             @RenderBody()
         </main>
     </div>
-    <footer class="page-footer footer">
+    <footer class="light-blue page-footer footer">
         <div class="footer-copyright">
             <div class="container">
                 2020, netcore-postgres-oauth-boiler

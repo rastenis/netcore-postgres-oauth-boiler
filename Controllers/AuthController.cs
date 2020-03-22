@@ -43,31 +43,30 @@ namespace netcore_postgres_oauth_boiler.Controllers
             if (!HttpContext.Session.IsAvailable)
                 await HttpContext.Session.LoadAsync();
 
+            // Disallowing already logged-in users
             if (HttpContext.Session.GetString("user") != null)
             {
                 ViewData["error"] = "You are already logged in!";
                 return View("Login");
             }
 
-            BadRequestObjectResult failure = BadRequest("Wrong email/password combination!");
+            // Fetching the user
             var user = await _context.Users.Where(c => Regex.IsMatch(c.email, email)).FirstOrDefaultAsync();
 
-            if (user == null)
+            // Checking if user exists and verifying password
+            if (user == null || !BCrypt.Net.BCrypt.Verify(password, user.password))
             {
                 ViewData["error"] = "Incorrect email or password!";
                 return View("Login");
             }
 
-            if (!BCrypt.Net.BCrypt.Verify(password, user.password))
-            {
-                ViewData["error"] = "Incorrect email or password!";
-                return View("Login");
-            }
-
+            // Attaching user to session
             HttpContext.Session.SetString("user", user.id);
 
+            // Setting info alert to be shown
             ViewData["info"] = "You have logged in!";
 
+            // Rendering index
             return View("~/Views/Home/Index.cshtml");
         }
 
@@ -121,7 +120,7 @@ namespace netcore_postgres_oauth_boiler.Controllers
                 await HttpContext.Session.LoadAsync();
             var c = HttpContext.Session.GetString("user");
 
-            return Ok("You are: " + c);
+            return Ok("You are: " + c ?? "not logged in.");
         }
 
 
@@ -133,7 +132,8 @@ namespace netcore_postgres_oauth_boiler.Controllers
                 await HttpContext.Session.LoadAsync();
             HttpContext.Session.Clear();
 
-            return Redirect("/");
+            ViewData["info"] = "You have logged out!";
+            return View("~/Views/Home/Index.cshtml");
         }
 
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
