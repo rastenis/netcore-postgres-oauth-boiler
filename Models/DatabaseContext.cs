@@ -7,8 +7,15 @@ using BCrypt;
 
 namespace netcore_postgres_oauth_boiler.Models
 {
+
+
 	 public class DatabaseContext : DbContext
 	 {
+		  public DatabaseContext(DbContextOptions<DatabaseContext> options)
+	 : base(options)
+		  { }
+	
+
 		  public DbSet<User> Users { get; set; }
 		  public DbSet<Credential> Credentials { get; set; }
 	 }
@@ -23,6 +30,13 @@ namespace netcore_postgres_oauth_boiler.Models
 				this.credentials = new List<Credential>();
 				this.credentials.Add(credential);
 		  }
+
+		  public User(string email, string password)
+		  {
+				this.id = Guid.NewGuid().ToString();
+				this.email = email;
+				this.password = BCrypt.Net.BCrypt.HashPassword(password);
+		  }
 		  public string id { get; set; }
 		  public string email { get; set; }
 		  public string password { get; set; }
@@ -31,6 +45,7 @@ namespace netcore_postgres_oauth_boiler.Models
 
 	 public class Credential
 	 {
+		  public string id { get; set; }
 		  public AuthProvider provider { get; set; }
 		  public string token { get; set; }
 	 }

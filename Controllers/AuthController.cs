@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -41,8 +42,11 @@ namespace netcore_postgres_oauth_boiler.Controllers
 				{
 					 return failure;
 				}
-				
-				// TODO: assign session
+
+				// Assigning session
+				if (!HttpContext.Session.IsAvailable)
+					 await HttpContext.Session.LoadAsync();
+				HttpContext.Session.SetString("user", user.id);
 
 				return Redirect("/");
 		  }
@@ -58,10 +62,26 @@ namespace netcore_postgres_oauth_boiler.Controllers
 					 return BadRequest("This email is already taken!");
 				}
 
-				_context.Users.Add(new User(email, password, null));
+				User u = new User(email, password);
+				_context.Users.Add(u);
 				await _context.SaveChangesAsync();
 
-				// TODO: Assign session
+				// Assigning session
+				if (!HttpContext.Session.IsAvailable)
+					 await HttpContext.Session.LoadAsync();
+				HttpContext.Session.SetString("user", u.id);
+
+				return Ok();
+		  }
+
+
+		  [HttpPost]
+		  public async Task<IActionResult> Logout()
+		  {
+				// Removing session
+				if (!HttpContext.Session.IsAvailable)
+					 await HttpContext.Session.LoadAsync();
+				HttpContext.Session.Clear();
 
 				return Ok();
 		  }

@@ -3,7 +3,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.29911.84
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "netcore-postgres-oauth-boiler", "netcore-postgres-oauth-boiler.csproj", "{45AFB8CC-F9DB-4840-B39A-1CD1C77E730C}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "netcore-postgres-oauth-boiler", "netcore-postgres-oauth-boiler.csproj", "{45AFB8CC-F9DB-4840-B39A-1CD1C77E730C}"
+EndProject
+Project("{E53339B2-1760-4266-BCC7-CA923CBCF16C}") = "docker-compose", "docker-compose.dcproj", "{739C26D5-09D9-4662-835F-2A937F293E10}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -15,6 +17,10 @@ Global
 		{45AFB8CC-F9DB-4840-B39A-1CD1C77E730C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{45AFB8CC-F9DB-4840-B39A-1CD1C77E730C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{45AFB8CC-F9DB-4840-B39A-1CD1C77E730C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{739C26D5-09D9-4662-835F-2A937F293E10}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{739C26D5-09D9-4662-835F-2A937F293E10}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{739C26D5-09D9-4662-835F-2A937F293E10}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{739C26D5-09D9-4662-835F-2A937F293E10}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
