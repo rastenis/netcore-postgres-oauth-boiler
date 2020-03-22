@@ -1,5 +1,8 @@
-﻿<!DOCTYPE html>
+﻿@using Microsoft.AspNetCore.Http
+
+<!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -13,9 +16,16 @@
             <div class="nav-wrapper">
                 <a asp-area="" asp-controller="Home" asp-action="Index" class="brand-logo">boiler</a>
                 <ul id="nav-mobile" class="right hide-on-med-and-down">
-                    <li><a asp-area="" asp-controller="Home" asp-action="Index">Home</a></li>
-                    <li><a asp-area="" asp-controller="Auth" asp-action="Login">Login</a></li>
-                    <li><a asp-area="" asp-controller="Auth" asp-action="Register">Register</a></li>
+                    <li><a style="float:left;" asp-area="" asp-controller="Home" asp-action="Index">Home</a></li>
+                    @if (Context.Session.GetString("user") == null)
+                    {
+                        <li><a asp-area="" asp-controller="Auth" asp-action="Login">Login</a></li>
+                        <li><a asp-area="" asp-controller="Auth" asp-action="Register">Register</a></li>
+                    }
+                    else
+                    {
+                        <li style="font-weight:bold;"><a asp-area="" asp-controller="Auth" asp-action="Logout">Logout</a></li>
+                    }
                 </ul>
             </div>
         </nav>
