@@ -24,11 +24,20 @@ namespace netcore_postgres_oauth_boiler.Controllers
 				_logger = logger;
 				_context = context;
 		  }
+		  public IActionResult Login()
+		  {
+				return View();
+		  }
+
+		  public IActionResult Register()
+		  {
+				return View();
+		  }
 
 		  [HttpPost]
 		  public async Task<IActionResult> Login([FromForm] string email, [FromForm] string password)
 		  {
-				Console.WriteLine("Logging in with ", email, password);
+				Console.WriteLine($"{email} is logging in.");
 
 				// Loading session
 				if (!HttpContext.Session.IsAvailable)
@@ -36,7 +45,8 @@ namespace netcore_postgres_oauth_boiler.Controllers
 
 				if (HttpContext.Session.GetString("user") != null)
 				{
-					 return BadRequest("You are already logged in!");
+					 ViewData["error"] = "You are already logged in!";
+					 return View("Login");
 				}
 
 				BadRequestObjectResult failure = BadRequest("Wrong email/password combination!");
@@ -44,17 +54,21 @@ namespace netcore_postgres_oauth_boiler.Controllers
 
 				if (user==null)
 				{
-					 return failure;
+					 ViewData["error"] = "Incorrect email or password!";
+					 return View("Login");
 				}
 
 				if (!BCrypt.Net.BCrypt.Verify(password,user.password))
 				{
-					 return failure;
+					 ViewData["error"] = "Incorrect email or password!";
+					 return View("Login");
 				}
 
 				HttpContext.Session.SetString("user", user.id);
 
-				return Redirect("/");
+				ViewData["info"] = "You have logged in!";
+
+				return View("~/Views/Home/Index.cshtml");
 		  }
 
 		  [HttpPost]
@@ -64,21 +78,26 @@ namespace netcore_postgres_oauth_boiler.Controllers
 				if (!HttpContext.Session.IsAvailable)
 					 await HttpContext.Session.LoadAsync();
 
+				// Verifying user is not logged in
 				if (HttpContext.Session.GetString("user")!=null)
 				{
-					 return BadRequest("You are already logged in!");
+					 ViewData["error"] = "You are already logged in!";
+					 return View("Register");
 				}
 
+				// Verifying data
 				if (email==null || password==null)
 				{
-					 return BadRequest("Missing username or password!");
+					 ViewData["error"] = "Missing username or password!";
+					 return View("Register");
 				}
 
 				// Checking for duplicates
 				var count = await _context.Users.Where(c => Regex.IsMatch(c.email, email)).CountAsync();
 				if (count != 0)
 				{
-					 return BadRequest("This email is already taken!");
+					 ViewData["error"] = "This email is already taken!";
+					 return View("Register");
 				}
 
 				// Saving the user
@@ -86,9 +105,13 @@ namespace netcore_postgres_oauth_boiler.Controllers
 				_context.Users.Add(u);
 				await _context.SaveChangesAsync();
 
+				// Assigning user id to session
 				HttpContext.Session.SetString("user", u.id);
 
-				return Ok("You have successfully registered!");
+				// Setting info alert
+				ViewData["info"] = "You have successfully registered!";
+
+				return View("~/Views/Home/Index.cshtml");
 		  }
 
 		  [HttpGet]

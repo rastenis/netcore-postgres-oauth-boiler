@@ -1,22 +1,22 @@
 ﻿<!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - netcore_postgres_oauth_boiler</title>
-    <link rel="stylesheet" href="~/lib/materialize/css/materialize.min.css" />
-    <link rel="stylesheet" href="~/css/site.css" />
+	 <meta charset="utf-8" />
+	 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	 <title>@ViewData["Title"] - netcore_postgres_oauth_boiler</title>
+	 <link rel="stylesheet" href="~/lib/materialize/css/materialize.min.css" />
+	 <link rel="stylesheet" href="~/css/site.css" />
 </head>
 <body>
 	 <header>
 	 	 <nav>
 	 	 	 <div class="nav-wrapper">
 	 	 	 	 <a asp-area="" asp-controller="Home" asp-action="Index" class="brand-logo">boiler</a>
-				 <ul id="nav-mobile" class="right hide-on-med-and-down">
-				 	 <li><a asp-area="" asp-controller="Home" asp-action="Index">Home</a></li>
-				 	 <li><a asp-area="" asp-controller="Home" asp-action="Login">Login</a></li>
-				 	 <li><a asp-area="" asp-controller="Home" asp-action="Register">Register</a></li>
-				 </ul>
+	 	 	 	 <ul id="nav-mobile" class="right hide-on-med-and-down">
+	 	 	 	 	 <li><a asp-area="" asp-controller="Home" asp-action="Index">Home</a></li>
+	 	 	 	 	 <li><a asp-area="" asp-controller="Auth" asp-action="Login">Login</a></li>
+	 	 	 	 	 <li><a asp-area="" asp-controller="Auth" asp-action="Register">Register</a></li>
+	 	 	 	 </ul>
 	 	 	 </div>
 	 	 </nav>
 	 </header>
@@ -37,3 +37,16 @@
 @RenderSection("Scripts", required: false)
 </body>
 </html>
+
+<script type="text/javascript">
+	 // Info boxes
+	 document.addEventListener('DOMContentLoaded', (event) => {
+		  if ('@ViewData["info"]'!=null && '@ViewData["info"]'!="" ) {
+				M.toast({ html: '@ViewData["info"]' });
+		  }
+
+		  if ('@ViewData["error"]'!=null && '@ViewData["error"]'!="" ) {
+				M.toast({ html: '@ViewData["error"]', classes: "red" });
+		  }
+	 })
+</script>
