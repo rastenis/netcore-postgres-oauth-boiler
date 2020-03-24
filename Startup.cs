@@ -9,6 +9,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using netcore_postgres_oauth_boiler.Models;
+using Microsoft.AspNetCore.Authentication;
 
 namespace netcore_postgres_oauth_boiler
 {
@@ -38,6 +39,17 @@ namespace netcore_postgres_oauth_boiler
 
             services.AddDbContext<DatabaseContext>(options =>
                  options.UseNpgsql(Configuration.GetConnectionString("DefaultConnection")));
+
+
+            services.AddAuthentication()
+               .AddGoogle(options =>
+               {
+                   IConfigurationSection googleAuthNSection =
+                       Configuration.GetSection("Google");
+
+                   options.ClientId = googleAuthNSection["client_id"];
+                   options.ClientSecret = googleAuthNSection["client_secret"];
+               });
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
