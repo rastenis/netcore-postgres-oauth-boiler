@@ -31,13 +31,16 @@ The file `appsettingsExample.json` needs to be renamed to `appsettings.json` wit
 
 ### Running on Windows
 
-Windows has an open issue with local volume mapping permissions, which results in PostgreSQL not being able to write to a (relative) local directory. Thus, when running on Windows (via run.sh), an external volume is created, which is managed by Docker.
+Docker on Windows has an open issue with local volume mapping permissions, which results in PostgreSQL not being able to write to a (relative) local directory. Thus, when running on Windows (via run.sh), an external volume is created, which is managed by Docker.
 
 ### Information & Sources
 
 Documentation for ASP.NET Core can be found here: [.NET Core docs.](https://docs.microsoft.com/aspnet/core)
+
 Read about PostgreSQL here: [PostgreSQL.](https://www.postgresql.org/docs/12/tutorial-start.html)
+
 Guide for Materialize UI: [Getting started with Materialize.](https://materializecss.com/getting-started.html)
+
 C# Reference: [C# docs.](https://docs.microsoft.com/en-us/dotnet/csharp/)
 
 ### Contribution & Support

@@ -49,3 +49,5 @@ msbuild.wrn
 data
 
 appsettings.json
+
+nginx-certbot/*.conf
