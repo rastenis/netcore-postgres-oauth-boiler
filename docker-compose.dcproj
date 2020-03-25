@@ -5,14 +5,16 @@
     <DockerTargetOS>Linux</DockerTargetOS>
     <ProjectGuid>739c26d5-09d9-4662-835f-2a937f293e10</ProjectGuid>
     <DockerLaunchAction>LaunchBrowser</DockerLaunchAction>
-    <DockerServiceUrl>{Scheme}://localhost:{ServicePort}</DockerServiceUrl>
+    <DockerServiceUrl>{Scheme}://localhost:8000</DockerServiceUrl>
     <DockerServiceName>netcore-postgres-oauth-boiler</DockerServiceName>
+    <DockerComposeBaseFilePath>docker-compose-windows</DockerComposeBaseFilePath>
+    <DockerServiceName>boiler</DockerServiceName>
   </PropertyGroup>
   <ItemGroup>
-    <None Include="docker-compose.override.yml">
-      <DependentUpon>docker-compose.yml</DependentUpon>
+    <None Include="docker-compose-windows.override.yml">
+      <DependentUpon>docker-compose-windows.yml</DependentUpon>
     </None>
-    <None Include="docker-compose.yml" />
+    <None Include="docker-compose-windows.yml" />
     <None Include=".dockerignore" />
   </ItemGroup>
 </Project>

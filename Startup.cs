@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -9,6 +8,9 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using netcore_postgres_oauth_boiler.Models;
+using Microsoft.AspNetCore.HttpOverrides;
+using System.Net;
+using netcore_postgres_oauth_boiler.Models.Config;
 
 namespace netcore_postgres_oauth_boiler
 {
@@ -38,13 +40,22 @@ namespace netcore_postgres_oauth_boiler
 
             services.AddDbContext<DatabaseContext>(options =>
                  options.UseNpgsql(Configuration.GetConnectionString("DefaultConnection")));
+
+            // Get the Google config from appsettings.json
+            services.Configure<GoogleConfig>(Configuration.GetSection("Google"));
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env, DatabaseContext context)
         {
+            // Database setup
             context.Database.Migrate();
 
+            // Nginx compatibility
+            app.UseForwardedHeaders(new ForwardedHeadersOptions
+            {
+                ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+            });
 
             if (env.IsDevelopment())
             {

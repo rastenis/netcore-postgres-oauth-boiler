@@ -1,33 +1,34 @@
-﻿version: "3.0"
+﻿version: "3.4"
+
 services:
-  boiler:
-    build:
-      context: ./netcore-postgres-oauth-boiler
-    ports:
-      - "3000:80"
-    container_name: boiler
-    restart: always
-  # nginx:
-  #   container_name: nginx
-  #   restart: always
-  #   build:
-  #     context: ./nginx-certbot
-  #   environment:
-  #     - CERTBOT_EMAIL=someEmail@example.com
-  #   ports:
-  #     - "80:80"
-  #     - "443:443"
-  #   volumes:
-  #     - ./data/certs:/etc/letsencrypt
-  db:
-    image: postgres
-    restart: always
-    environment:
-      POSTGRES_PASSWORD: example
-    volumes:
-      - ./data/db:/var/lib/postgresql/data
-  adminer:
-    image: adminer
-    restart: always
-    ports:
-      - 8080:8080
+    boiler:
+        build:
+            context: ./netcore-postgres-oauth-boiler
+        ports:
+            - "3000:80"
+        container_name: boiler
+        restart: always
+    nginx:
+        container_name: nginx
+        restart: always
+        build:
+        context: ./nginx-certbot
+        environment:
+            - CERTBOT_EMAIL=someEmail@example.com
+        ports:
+            - "80:80"
+            - "443:443"
+        volumes:
+            - ./data/certs:/etc/letsencrypt
+    db:
+        image: postgres
+        restart: always
+        environment:
+            POSTGRES_PASSWORD: example
+        volumes:
+            - ./data/db:/var/lib/postgresql/data
+    adminer:
+        image: adminer
+        restart: always
+        ports:
+            - 8080:8080
