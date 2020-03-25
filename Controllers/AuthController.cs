@@ -62,17 +62,17 @@ namespace netcore_postgres_oauth_boiler.Controllers
             }
 
             // Fetching the user
-            var user = await _context.Users.Where(c => Regex.IsMatch(c.email, email)).FirstOrDefaultAsync();
+            var user = await _context.Users.Where(c => Regex.IsMatch(c.Email, email)).FirstOrDefaultAsync();
 
             // Checking if user exists and verifying password
-            if (user == null || !BCrypt.Net.BCrypt.Verify(password, user.password))
+            if (user == null || !BCrypt.Net.BCrypt.Verify(password, user.Password))
             {
                 TempData["error"] = "Incorrect email or password!";
                 return View("Login");
             }
 
             // Attaching user to session
-            HttpContext.Session.SetString("user", user.id);
+            HttpContext.Session.SetString("user", user.Id);
 
             // Setting info alert to be shown
             TempData["info"] = "You have logged in!";
@@ -103,7 +103,7 @@ namespace netcore_postgres_oauth_boiler.Controllers
             }
 
             // Checking for duplicates
-            var count = await _context.Users.Where(c => Regex.IsMatch(c.email, email)).CountAsync();
+            var count = await _context.Users.Where(c => Regex.IsMatch(c.Email, email)).CountAsync();
             if (count != 0)
             {
                 TempData["error"] = "This email is already taken!";
@@ -116,7 +116,7 @@ namespace netcore_postgres_oauth_boiler.Controllers
             await _context.SaveChangesAsync();
 
             // Assigning user id to session
-            HttpContext.Session.SetString("user", u.id);
+            HttpContext.Session.SetString("user", u.Id);
 
             // Setting info alert
             TempData["info"] = "You have successfully registered!";
@@ -162,7 +162,6 @@ namespace netcore_postgres_oauth_boiler.Controllers
         [HttpGet]
         public async Task<IActionResult> GoogleCallback([FromQuery]IDictionary<string, string> query)
         {
-
             if (query["code"] == null)
             {
                 return Redirect("/");
@@ -171,12 +170,13 @@ namespace netcore_postgres_oauth_boiler.Controllers
             GoogleToken userToken = await _requestAuthDetails<GoogleToken>("https://accounts.google.com/o/oauth2/token",
                 $"code={ query["code"] }&client_id={ _googleConfig.Value.client_id }&client_secret={_googleConfig.Value.client_secret}&redirect_uri=https://{this.Request.Host}/Auth/GoogleCallback&grant_type=authorization_code");
 
-            if (userToken != null)
+            if (userToken == null)
             {
                 TempData["error"] = "Could not link your account.";
                 return Redirect("/");
             }
-            if (!string.IsNullOrEmpty(userToken.access_token) || !string.IsNullOrEmpty(userToken.id_token))
+
+            if (string.IsNullOrEmpty(userToken.access_token) || string.IsNullOrEmpty(userToken.id_token))
             {
                 TempData["error"] = "Could not link your account. Provider returned no info.";
                 return Redirect("/");
@@ -193,16 +193,54 @@ namespace netcore_postgres_oauth_boiler.Controllers
                 return Redirect("/");
             }
 
+            // Fetching data
+            var userWithMatchingToken = await _context.Users.Where(c => c.Credentials.Any(cred => cred.Provider == AuthProvider.GOOGLE && cred.Token == validPayload.Subject)).FirstOrDefaultAsync();
+            var userWithMatchingEmail = await _context.Users.Where(c => c.Email == validPayload.Email).FirstOrDefaultAsync();
+
             // If user is logged in and the auth token is not registered yet, link.
             if (HttpContext.Session.GetString("user") != null)
             {
-                // TODO
+                var user = await _context.Users.Where(c => c.Id == HttpContext.Session.GetString("user")).FirstOrDefaultAsync();
+
+                // If someone already has that token OR there is a user that has the email but is not the same user.
+                if (userWithMatchingToken != null || (userWithMatchingEmail != null && userWithMatchingEmail.Email != user.Email))
+                {
+                    TempData["error"] = "This Google account is already linked!";
+                    return Redirect("/");
+                }
+
+                // Adding the token and saving
+                user.Credentials.Add(new Credential(AuthProvider.GOOGLE, validPayload.Subject));
+                await _context.SaveChangesAsync();
+
+                TempData["info"] = "You have linked your Google account!";
+                return Redirect("/");
             }
 
-            // If is NOT logged, check if linked to some account, and log user in.
-            // If NOT linked, create a new account ONLY if that email is not used already.`
+            // If user is NOT logged in, check if linked to some account, and log user in.
+            if (userWithMatchingToken != null)
+            {
+                HttpContext.Session.SetString("user", userWithMatchingToken.Id);
+                return Redirect("/");
+            }
 
-            // TODO
+            // If NOT linked, create a new account ONLY if that email is not used already.`
+            if (userWithMatchingEmail?.Email == validPayload.Email)
+            {
+                TempData["error"] = "This Google account's email has been used to create an account here, so you can not link it!";
+                return Redirect("/");
+            }
+
+            // Creating a new account:
+            User u = new User(null, "", new Credential(AuthProvider.GOOGLE, validPayload.Subject));
+            _context.Users.Add(u);
+            await _context.SaveChangesAsync();
+
+            // Assigning user id to session
+            HttpContext.Session.SetString("user", u.Id);
+
+            // Setting info alert
+            TempData["info"] = "You have successfully created an account with Google!";
 
             return Redirect("/");
         }
@@ -235,7 +273,7 @@ namespace netcore_postgres_oauth_boiler.Controllers
 
             return userToken;
         }
-     
+
     }
     public class GoogleToken
     {
