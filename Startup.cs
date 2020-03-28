@@ -42,7 +42,7 @@ namespace netcore_postgres_oauth_boiler
                  options.UseNpgsql(Configuration.GetConnectionString("DefaultConnection")));
 
             // Get the Google config from appsettings.json
-            services.Configure<GoogleConfig>(Configuration.GetSection("Google"));
+            services.Configure<OAuthConfig>(Configuration.GetSection("OAuthConfig"));
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
