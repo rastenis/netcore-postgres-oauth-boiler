@@ -1,24 +1,23 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Configuration;
-using System.Diagnostics;
-using System.IO;
-using System.Linq;
-using System.Net;
-using System.Text;
-using System.Text.RegularExpressions;
-using System.Threading;
-using System.Threading.Tasks;
-using Google.Apis.Auth;
+﻿using Google.Apis.Auth;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using netcore_postgres_oauth_boiler.Models;
 using netcore_postgres_oauth_boiler.Models.Config;
 using Newtonsoft.Json;
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
+using System.Net;
+using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 
 namespace netcore_postgres_oauth_boiler.Controllers
 {
@@ -26,14 +25,19 @@ namespace netcore_postgres_oauth_boiler.Controllers
     {
 
         private readonly DatabaseContext _context;
+        static readonly HttpClient client = new HttpClient();
+
 
         private readonly ILogger<AuthController> _logger;
-        private readonly IOptions<GoogleConfig> _googleConfig;
-        public AuthController(ILogger<AuthController> logger, IOptions<GoogleConfig> googleConfig, DatabaseContext context)
+        private readonly IOptions<OAuthConfig> _oauthConfig;
+        public AuthController(ILogger<AuthController> logger, IOptions<OAuthConfig> googleConfig, DatabaseContext context)
         {
+            client.DefaultRequestHeaders.Add("Accept", "application/json");
+            client.DefaultRequestHeaders.Add("User-Agent", "netcore-postgres-oauth-boiler/0.0.1");
+
             _logger = logger;
             _context = context;
-            _googleConfig = googleConfig;
+            _oauthConfig = googleConfig;
         }
         public IActionResult Login()
         {
@@ -155,8 +159,15 @@ namespace netcore_postgres_oauth_boiler.Controllers
         [HttpGet]
         public async Task<IActionResult> Google()
         {
-            string Googleurl = $"https://accounts.google.com/o/oauth2/auth?response_type=code&redirect_uri=https://{this.Request.Host}/Auth/GoogleCallback&scope=email+profile+openid&client_id={_googleConfig.Value.client_id}";
-            return Redirect(Googleurl);
+            string googleUrl = $"https://accounts.google.com/o/oauth2/auth?response_type=code&redirect_uri=https://{this.Request.Host}/Auth/GoogleCallback&scope=email+profile+openid&client_id={_oauthConfig.Value.Google.client_id}";
+            return Redirect(googleUrl);
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> Github()
+        {
+            string GithubrUrl = $"https://github.com/login/oauth/authorize?scope=read:user&client_id={_oauthConfig.Value.Github.client_id}";
+            return Redirect(GithubrUrl);
         }
 
         [HttpGet]
@@ -167,8 +178,15 @@ namespace netcore_postgres_oauth_boiler.Controllers
                 return Redirect("/");
             }
 
-            GoogleToken userToken = await _requestAuthDetails<GoogleToken>("https://accounts.google.com/o/oauth2/token",
-                $"code={ query["code"] }&client_id={ _googleConfig.Value.client_id }&client_secret={_googleConfig.Value.client_secret}&redirect_uri=https://{this.Request.Host}/Auth/GoogleCallback&grant_type=authorization_code");
+            Dictionary<string, string> parameters = new Dictionary<string, string>();
+            parameters["code"] = query["code"];
+            parameters["client_id"] = _oauthConfig.Value.Google.client_id;
+            parameters["redirect_uri"] = $"https://{this.Request.Host}/Auth/GoogleCallback";
+            parameters["client_secret"] = _oauthConfig.Value.Google.client_secret;
+            parameters["grant_type"] = "authorization_code";
+
+
+            GoogleToken userToken = await _post<GoogleToken>("https://accounts.google.com/o/oauth2/token", parameters);
 
             if (userToken == null)
             {
@@ -245,31 +263,136 @@ namespace netcore_postgres_oauth_boiler.Controllers
             return Redirect("/");
         }
 
-        public async Task<T> _requestAuthDetails<T>(string path, string parameters)
+        [HttpGet]
+        public async Task<IActionResult> GithubCallback([FromQuery]IDictionary<string, string> query)
         {
-            // Constructing request to retrieve access token
-            HttpWebRequest webRequest = (HttpWebRequest)WebRequest.Create(path);
-            webRequest.Method = "POST";
-            byte[] byteArray = Encoding.UTF8.GetBytes(parameters);
-            webRequest.ContentType = "application/x-www-form-urlencoded";
-            webRequest.ContentLength = byteArray.Length;
 
-            // Opening a request
-            Stream postStream = await webRequest.GetRequestStreamAsync();
+            if (query["code"] == null)
+            {
+                return Redirect("/");
 
-            // Add the post data to the web request
-            postStream.Write(byteArray, 0, byteArray.Length);
-            postStream.Close();
+            }
+            Dictionary<string, string> parameters = new Dictionary<string, string>();
+            parameters["code"] = query["code"];
+            parameters["client_id"] = _oauthConfig.Value.Github.client_id;
+            parameters["redirect_uri"] = $"https://{this.Request.Host}/Auth/GithubCallback";
+            parameters["client_secret"] = _oauthConfig.Value.Github.client_secret;
+            parameters["state"] = Guid.NewGuid().ToString();
 
-            // Getting response
-            WebResponse response = await webRequest.GetResponseAsync();
-            postStream = response.GetResponseStream();
+            GithubToken userToken = await _post<GithubToken>("https://github.com/login/oauth/access_token", parameters);
 
-            // Reading response
-            string responseFromServer = await new StreamReader(postStream).ReadToEndAsync();
+            if (userToken == null)
+            {
+                TempData["error"] = "Could not link your account.";
+                return Redirect("/");
+            }
+
+            if (string.IsNullOrEmpty(userToken.access_token))
+            {
+                TempData["error"] = "Could not link your account. Provider returned no info.";
+                return Redirect("/");
+            }
+
+            Dictionary<string, string> headers = new Dictionary<string, string>();
+            headers.Add("Authorization", $"token {userToken.access_token}");
+
+            GithubUserInfo userinfo = await _get<GithubUserInfo>("https://api.github.com/user", headers);
+
+            if (userinfo is null)
+            {
+                TempData["error"] = "Identity could not be resolved.";
+                return Redirect("/");
+            }
+
+            // Fetching data
+            var userWithMatchingToken = await _context.Users.Where(c => c.Credentials.Any(cred => cred.Provider == AuthProvider.GITHUB && cred.Token == userinfo.id)).FirstOrDefaultAsync();
+            var userWithMatchingEmail = await _context.Users.Where(c => c.Email == userinfo.email).FirstOrDefaultAsync();
+
+            // If user is logged in and the auth token is not registered yet, link.
+            if (HttpContext.Session.GetString("user") != null)
+            {
+                var user = await _context.Users.Where(c => c.Id == HttpContext.Session.GetString("user")).FirstOrDefaultAsync();
+
+                // If someone already has that token OR there is a user that has the email but is not the same user.
+                if (userWithMatchingToken != null || (userWithMatchingEmail != null && userWithMatchingEmail.Email != user.Email))
+                {
+                    TempData["error"] = "This Github account is already linked!";
+                    return Redirect("/");
+                }
+
+                // Adding the token and saving
+                user.Credentials.Add(new Credential(AuthProvider.GITHUB, userinfo.id));
+                await _context.SaveChangesAsync();
+
+                TempData["info"] = "You have linked your Github account!";
+                return Redirect("/");
+            }
+
+            // If user is NOT logged in, check if linked to some account, and log user in.
+            if (userWithMatchingToken != null)
+            {
+                HttpContext.Session.SetString("user", userWithMatchingToken.Id);
+                return Redirect("/");
+            }
+
+            // If NOT linked, create a new account ONLY if that email is not used already.`
+            if (userWithMatchingEmail?.Email == userinfo.email)
+            {
+                TempData["error"] = "This Github account's email has been used to create an account here, so you can not link it!";
+                return Redirect("/");
+            }
+
+            // Creating a new account:
+            User u = new User(null, "", new Credential(AuthProvider.GITHUB, userinfo.id));
+            _context.Users.Add(u);
+            await _context.SaveChangesAsync();
+
+            // Assigning user id to session
+            HttpContext.Session.SetString("user", u.Id);
+
+            // Setting info alert
+            TempData["info"] = "You have successfully created an account with Github!";
+
+            return Redirect("/");
+        }
+
+        public async Task<T> _post<T>(string path, Dictionary<string, string> body, Dictionary<string, string> headers = null)
+        {
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, path);
+            request.Content = new StringContent(body != null ? JsonConvert.SerializeObject(body) : "",
+                                                Encoding.UTF8,
+                                                "application/json");
+
+            // Adding headers if any
+            foreach (var header in headers ?? new Dictionary<string, string>())
+            {
+                request.Headers.Add(header.Key, header.Value);
+            }
+
+            var response = await client.SendAsync(request);
 
             // Deserializing Google auth info
-            T userToken = JsonConvert.DeserializeObject<T>(responseFromServer);
+            string responseContent = await response.Content.ReadAsStringAsync();
+            T userToken = JsonConvert.DeserializeObject<T>(responseContent);
+
+            return userToken;
+        }
+
+        public async Task<T> _get<T>(string path, Dictionary<string, string> headers = null)
+        {
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, path);
+
+            // Adding headers if any
+            foreach (var header in headers ?? new Dictionary<string, string>())
+            {
+                request.Headers.Add(header.Key, header.Value);
+            }
+
+            var response = await client.SendAsync(request);
+
+            // Deserializing Google auth info
+            string responseContent = await response.Content.ReadAsStringAsync();
+            T userToken = JsonConvert.DeserializeObject<T>(responseContent);
 
             return userToken;
         }
@@ -282,5 +405,22 @@ namespace netcore_postgres_oauth_boiler.Controllers
         public int expires_in { get; set; }
         public string id_token { get; set; }
         public string refresh_token { get; set; }
+    }
+
+    public class GithubToken
+    {
+        public string access_token { get; set; }
+        public string token_type { get; set; }
+        public string scope { get; set; }
+    }
+
+    public class GithubUserInfo
+    {
+        public string avatar_url { get; set; }
+        public string created_at { get; set; }
+        public string email { get; set; }
+        public string id { get; set; }
+        public string name { get; set; }
+        // And others...
     }
 }
