@@ -6,7 +6,7 @@ namespace netcore_postgres_oauth_boiler.Models.Config
     {
         public PlatformConfig Google { get; set; }
         public PlatformConfig Github { get; set; }
-        public PlatformConfig Linkedin { get; set; }
+        public PlatformConfig Reddit { get; set; }
 
     }
     public class PlatformConfig

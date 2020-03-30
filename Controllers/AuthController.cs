@@ -171,6 +171,14 @@ namespace netcore_postgres_oauth_boiler.Controllers
         }
 
         [HttpGet]
+        public async Task<IActionResult> Reddit()
+        {
+            string RedditUrl = $"https://github.com/login/oauth/authorize?scope=identity&client_id={_oauthConfig.Value.Reddit.client_id}&response_type=core&state={Guid.NewGuid().ToString()}&redirect_uri=https://{this.Request.Host}/Auth/RedditCallback&duration=temporary";
+            return Redirect(RedditUrl);
+        }
+
+
+        [HttpGet]
         public async Task<IActionResult> GoogleCallback([FromQuery]IDictionary<string, string> query)
         {
             if (query["code"] == null)
@@ -356,6 +364,29 @@ namespace netcore_postgres_oauth_boiler.Controllers
             return Redirect("/");
         }
 
+        [HttpGet]
+        public async Task<IActionResult> RedditCallback([FromQuery]IDictionary<string, string> query)
+        {
+            if (query["code"] == null)
+            {
+                TempData["info"] = "Link via Reddit failed. Try again later.";
+                return Redirect("/");
+            }
+
+            Dictionary<string, string> parameters = new Dictionary<string, string>();
+            parameters["code"] = query["code"];
+            parameters["redirect_uri"] = $"https://{this.Request.Host}/Auth/RedditCallback";
+
+
+            Dictionary<string, string> headers = new Dictionary<string, string>();
+            // TODO: client_id:client_secret in b64
+            headers.Add("Authorization", $"Basic {WIP}");
+
+            RedditToken userToken = await _post<RedditToken>("https://www.reddit.com/api/v1/access_token", parameters);
+
+            return Redirect("/");
+        }
+
         public async Task<T> _post<T>(string path, Dictionary<string, string> body, Dictionary<string, string> headers = null)
         {
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, path);
@@ -413,6 +444,8 @@ namespace netcore_postgres_oauth_boiler.Controllers
         public string token_type { get; set; }
         public string scope { get; set; }
     }
+
+    public class RedditToken : GithubToken { }
 
     public class GithubUserInfo
     {
