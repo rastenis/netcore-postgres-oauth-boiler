@@ -10,3 +10,18 @@
     width: 30%;
     margin auto;
 }
+
+.loginButton {
+    width: 60%;
+    margin-bottom: 10px;
+    display:inline-flex;
+    min-width:100px;
+}
+
+.logginButtonIcon {
+    width: 20px;
+    height: 20px;
+    margin-top: 8px;
+    margin-right:8px;
+    filter: invert(100%);
+}
