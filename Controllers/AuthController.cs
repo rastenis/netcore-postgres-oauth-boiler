@@ -6,18 +6,17 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using netcore_postgres_oauth_boiler.Models;
 using netcore_postgres_oauth_boiler.Models.Config;
-using Newtonsoft.Json;
+using netcore_postgres_oauth_boiler.Utilities;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
 using System.Linq;
-using System.Net;
 using System.Net.Http;
-using System.Net.Http.Headers;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using static netcore_postgres_oauth_boiler.Models.OAuthData;
+
 
 namespace netcore_postgres_oauth_boiler.Controllers
 {
@@ -25,19 +24,16 @@ namespace netcore_postgres_oauth_boiler.Controllers
     {
 
         private readonly DatabaseContext _context;
-        static readonly HttpClient client = new HttpClient();
 
-
+        private readonly Request requester;
         private readonly ILogger<AuthController> _logger;
         private readonly IOptions<OAuthConfig> _oauthConfig;
         public AuthController(ILogger<AuthController> logger, IOptions<OAuthConfig> googleConfig, DatabaseContext context)
         {
-            client.DefaultRequestHeaders.Add("Accept", "application/json");
-            client.DefaultRequestHeaders.Add("User-Agent", "netcore-postgres-oauth-boiler/0.0.1");
-
             _logger = logger;
             _context = context;
             _oauthConfig = googleConfig;
+            requester = new Request();
         }
         public IActionResult Login()
         {
@@ -166,9 +162,17 @@ namespace netcore_postgres_oauth_boiler.Controllers
         [HttpGet]
         public async Task<IActionResult> Github()
         {
-            string GithubrUrl = $"https://github.com/login/oauth/authorize?scope=read:user&client_id={_oauthConfig.Value.Github.client_id}";
-            return Redirect(GithubrUrl);
+            string GithubUrl = $"https://github.com/login/oauth/authorize?scope=user&client_id={_oauthConfig.Value.Github.client_id}";
+            return Redirect(GithubUrl);
         }
+
+        [HttpGet]
+        public async Task<IActionResult> Reddit()
+        {
+            string RedditUrl = $"https://www.reddit.com/api/v1/authorize?scope=identity&client_id={_oauthConfig.Value.Reddit.client_id}&response_type=code&state={Guid.NewGuid().ToString()}&redirect_uri=https://{this.Request.Host}/Auth/RedditCallback&duration=temporary";
+            return Redirect(RedditUrl);
+        }
+
 
         [HttpGet]
         public async Task<IActionResult> GoogleCallback([FromQuery]IDictionary<string, string> query)
@@ -185,8 +189,7 @@ namespace netcore_postgres_oauth_boiler.Controllers
             parameters["client_secret"] = _oauthConfig.Value.Google.client_secret;
             parameters["grant_type"] = "authorization_code";
 
-
-            GoogleToken userToken = await _post<GoogleToken>("https://accounts.google.com/o/oauth2/token", parameters);
+            GoogleToken userToken = await requester.Post<GoogleToken>("https://accounts.google.com/o/oauth2/token", parameters);
 
             if (userToken == null)
             {
@@ -250,7 +253,7 @@ namespace netcore_postgres_oauth_boiler.Controllers
             }
 
             // Creating a new account:
-            User u = new User(null, "", new Credential(AuthProvider.GOOGLE, validPayload.Subject));
+            User u = new User(validPayload.Email, "", new Credential(AuthProvider.GOOGLE, validPayload.Subject));
             _context.Users.Add(u);
             await _context.SaveChangesAsync();
 
@@ -279,34 +282,34 @@ namespace netcore_postgres_oauth_boiler.Controllers
             parameters["client_secret"] = _oauthConfig.Value.Github.client_secret;
             parameters["state"] = Guid.NewGuid().ToString();
 
-            GithubToken userToken = await _post<GithubToken>("https://github.com/login/oauth/access_token", parameters);
+            GithubToken userToken = await requester.Post<GithubToken>("https://github.com/login/oauth/access_token", parameters);
 
             if (userToken == null)
             {
-                TempData["error"] = "Could not link your account.";
+                TempData["error"] = "Could not link your Github account.";
                 return Redirect("/");
             }
 
             if (string.IsNullOrEmpty(userToken.access_token))
             {
-                TempData["error"] = "Could not link your account. Provider returned no info.";
+                TempData["error"] = "Could not link your account. Provider (Github) returned no info.";
                 return Redirect("/");
             }
 
             Dictionary<string, string> headers = new Dictionary<string, string>();
             headers.Add("Authorization", $"token {userToken.access_token}");
 
-            GithubUserInfo userinfo = await _get<GithubUserInfo>("https://api.github.com/user", headers);
+            GithubUserInfo userinfo = await requester.Get<GithubUserInfo>("https://api.github.com/user", headers);
 
             if (userinfo is null)
             {
-                TempData["error"] = "Identity could not be resolved.";
+                TempData["error"] = "Github identity could not be resolved.";
                 return Redirect("/");
             }
 
             // Fetching data
-            var userWithMatchingToken = await _context.Users.Where(c => c.Credentials.Any(cred => cred.Provider == AuthProvider.GITHUB && cred.Token == userinfo.id)).FirstOrDefaultAsync();
-            var userWithMatchingEmail = await _context.Users.Where(c => c.Email == userinfo.email).FirstOrDefaultAsync();
+            var userWithMatchingToken = await _context.Users.Where(c => c.Credentials.Any(cred => cred.Provider == AuthProvider.GITHUB && cred.Token == userinfo.Id)).FirstOrDefaultAsync();
+            var userWithMatchingEmail = await _context.Users.Where(c => c.Email != null && c.Email == userinfo.Email).FirstOrDefaultAsync();
 
             // If user is logged in and the auth token is not registered yet, link.
             if (HttpContext.Session.GetString("user") != null)
@@ -321,7 +324,7 @@ namespace netcore_postgres_oauth_boiler.Controllers
                 }
 
                 // Adding the token and saving
-                user.Credentials.Add(new Credential(AuthProvider.GITHUB, userinfo.id));
+                user.Credentials.Add(new Credential(AuthProvider.GITHUB, userinfo.Id));
                 await _context.SaveChangesAsync();
 
                 TempData["info"] = "You have linked your Github account!";
@@ -336,14 +339,14 @@ namespace netcore_postgres_oauth_boiler.Controllers
             }
 
             // If NOT linked, create a new account ONLY if that email is not used already.`
-            if (userWithMatchingEmail?.Email == userinfo.email)
+            if (userinfo.Email != null && userWithMatchingEmail?.Email == userinfo.Email)
             {
                 TempData["error"] = "This Github account's email has been used to create an account here, so you can not link it!";
                 return Redirect("/");
             }
 
             // Creating a new account:
-            User u = new User(null, "", new Credential(AuthProvider.GITHUB, userinfo.id));
+            User u = new User(userinfo.Email,"", new Credential(AuthProvider.GITHUB, userinfo.Id));
             _context.Users.Add(u);
             await _context.SaveChangesAsync();
 
@@ -356,71 +359,90 @@ namespace netcore_postgres_oauth_boiler.Controllers
             return Redirect("/");
         }
 
-        public async Task<T> _post<T>(string path, Dictionary<string, string> body, Dictionary<string, string> headers = null)
+        [HttpGet]
+        public async Task<IActionResult> RedditCallback([FromQuery]IDictionary<string, string> query)
         {
-            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, path);
-            request.Content = new StringContent(body != null ? JsonConvert.SerializeObject(body) : "",
-                                                Encoding.UTF8,
-                                                "application/json");
-
-            // Adding headers if any
-            foreach (var header in headers ?? new Dictionary<string, string>())
+            if (query["code"] == null)
             {
-                request.Headers.Add(header.Key, header.Value);
+                TempData["info"] = "Link via Reddit failed. Try again later.";
+                return Redirect("/");
             }
 
-            var response = await client.SendAsync(request);
+            Dictionary<string, string> headers = new Dictionary<string, string>();
+            var authBytes = Encoding.UTF8.GetBytes($"{_oauthConfig.Value.Reddit.client_id}:{_oauthConfig.Value.Reddit.client_secret}");
+            headers.Add("Authorization", $"Basic {Convert.ToBase64String(authBytes)}");
 
-            // Deserializing Google auth info
-            string responseContent = await response.Content.ReadAsStringAsync();
-            T userToken = JsonConvert.DeserializeObject<T>(responseContent);
+            RedditToken userToken = await requester.Post<RedditToken>("https://www.reddit.com/api/v1/access_token", null, headers, new StringContent($"grant_type=authorization_code&code={query["code"]}&redirect_uri=https://{this.Request.Host}/Auth/RedditCallback",
+                                              Encoding.UTF8,
+                                              "application/x-www-form-urlencoded"));
 
-            return userToken;
-        }
-
-        public async Task<T> _get<T>(string path, Dictionary<string, string> headers = null)
-        {
-            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, path);
-
-            // Adding headers if any
-            foreach (var header in headers ?? new Dictionary<string, string>())
+            if (userToken == null)
             {
-                request.Headers.Add(header.Key, header.Value);
+                TempData["error"] = "Could not link your Reddit account.";
+                return Redirect("/");
             }
 
-            var response = await client.SendAsync(request);
+            if (string.IsNullOrEmpty(userToken.access_token))
+            {
+                TempData["error"] = "Could not link your account. Provider (Reddit) returned no info.";
+                return Redirect("/");
+            }
 
-            // Deserializing Google auth info
-            string responseContent = await response.Content.ReadAsStringAsync();
-            T userToken = JsonConvert.DeserializeObject<T>(responseContent);
+            headers = new Dictionary<string, string>();
+            headers.Add("Authorization", $"bearer {userToken.access_token}");
 
-            return userToken;
+            RedditUserInfo userinfo = await requester.Get<RedditUserInfo>("https://oauth.reddit.com/api/v1/me", headers);
+
+            if (userinfo is null)
+            {
+                TempData["error"] = "Reddit identity could not be resolved.";
+                return Redirect("/");
+            }
+
+            // Fetching data
+            var userWithMatchingToken = await _context.Users.Where(c => c.Credentials.Any(cred => cred.Provider == AuthProvider.REDDIT && cred.Token == userinfo.Id)).FirstOrDefaultAsync();
+
+            // Reddit does not have force-verified emails, so we do not look for email collisions.
+
+            // If user is logged in and the auth token is not registered yet, link.
+            if (HttpContext.Session.GetString("user") != null)
+            {
+                var user = await _context.Users.Where(c => c.Id == HttpContext.Session.GetString("user")).FirstOrDefaultAsync();
+
+                // If someone already has that token OR there is a user that has the email but is not the same user.
+                if (userWithMatchingToken != null)
+                {
+                    TempData["error"] = "This Reddit account is already linked!";
+                    return Redirect("/");
+                }
+
+                // Adding the token and saving
+                user.Credentials.Add(new Credential(AuthProvider.REDDIT, userinfo.Id));
+                await _context.SaveChangesAsync();
+
+                TempData["info"] = "You have linked your Reddit account!";
+                return Redirect("/");
+            }
+
+            // If user is NOT logged in, check if linked to some account, and log user in.
+            if (userWithMatchingToken != null)
+            {
+                HttpContext.Session.SetString("user", userWithMatchingToken.Id);
+                return Redirect("/");
+            }
+
+            // Creating a new account:
+            User u = new User(null, "", new Credential(AuthProvider.REDDIT, userinfo.Id));
+            _context.Users.Add(u);
+            await _context.SaveChangesAsync();
+
+            // Assigning user id to session
+            HttpContext.Session.SetString("user", u.Id);
+
+            // Setting info alert
+            TempData["info"] = "You have successfully created an account with Reddit!";
+
+            return Redirect("/");
         }
-
-    }
-    public class GoogleToken
-    {
-        public string access_token { get; set; }
-        public string token_type { get; set; }
-        public int expires_in { get; set; }
-        public string id_token { get; set; }
-        public string refresh_token { get; set; }
-    }
-
-    public class GithubToken
-    {
-        public string access_token { get; set; }
-        public string token_type { get; set; }
-        public string scope { get; set; }
-    }
-
-    public class GithubUserInfo
-    {
-        public string avatar_url { get; set; }
-        public string created_at { get; set; }
-        public string email { get; set; }
-        public string id { get; set; }
-        public string name { get; set; }
-        // And others...
     }
 }

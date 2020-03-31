@@ -77,7 +77,7 @@ namespace netcore_postgres_oauth_boiler.Models
     public enum AuthProvider
     {
         GOOGLE,
-        LINKEDIN,
+        REDDIT,
         GITHUB,
     }
 }
