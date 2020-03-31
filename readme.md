@@ -6,6 +6,22 @@ A basic .NET Core website boilerplate using PostgreSQL for storage, adminer for 
 
 ## Features
 
+-   Vanilla .NET Core Server Setup:
+
+    -   Razor pages for templating
+    -   Server -> client data rendering demo
+    -   Native Entity Framework database interface
+    -   Asynchronous design
+    -   Auth gated route examples
+
+-   User authentication via:
+
+    -   Regular email/password
+    -   Google
+    -   Github
+    -   Reddit
+
+-   Auth method merging, linking and unlinking of social auth accounts
 -   TLS/HTTPS:
     -   Automatic certificate generation powered by Let's Encrypt
     -   Hosting modes:
@@ -14,20 +30,46 @@ A basic .NET Core website boilerplate using PostgreSQL for storage, adminer for 
 
 ## Configuration
 
-The file `appsettingsExample.json` needs to be renamed to `appsettings.json` with replaced OAuth keys.
+1.  Copy the boiler.conf from nginx-certbot/example to nginx-certbot/ and adjust according to your domain names. The domain should point to the IP of the machine you're running this project on.
+2.  Open the docker-compose file you're going to use (depends on your platform) and set `CERTBOT_EMAIL=XXX` to your email for Let's Encrypt certificate generation.
+3.  The file `appsettingsExample.json` needs to be renamed to `appsettings.json` with your own OAuth keys:
 
 -   The process for obtaining a Google key is described [here](https://developers.google.com/identity/protocols/OAuth2).
--   The process for obtaining a Twitter key is described [here](https://developer.twitter.com/en/docs/basics/authentication/guides/access-tokens.html).
+-   The method to create a Github app in order to get an API key is described [here](https://developer.github.com/apps/building-oauth-apps/creating-an-oauth-app/).
+-   The process for creating a Reddit app in order to get an API key is described [here](https://github.com/reddit-archive/reddit/wiki/OAuth2#getting-started).
 
 ## Running the boilerplate
 
-1. Standalone:
+-   Standalone:
 
-    Run `docker-compose -f docker-compose-windows.yml up` if you are on Windows, and `docker-compose -f docker-compose-linux.yml up` if you are on Linux. For an explanation of this separation, take a look at [Running on Windows](#running-on-windows).
+```bash
+# clone the repo
+$ git clone https://github.com/Scharkee/netcore-postgres-oauth-boiler.git
+$ cd netcore-postgres-oauth-boiler
+# perform configuration...
 
-2. Through Visual Studio:
+# generate TLS certificates and run on ports 80/443
+# choose between docker-compose-linux.yml and docker-compose-windows.yml
+$ docker-compose -f docker-compose-linux.yml up
+```
 
-    Run the docker-compose configuration.
+For an explanation of the docker-compose file separation, take a look at [Running on Windows](#running-on-windows).
+
+-   Through Visual Studio:
+
+    1. Launch Visual Studio
+    2. Right-click on the `docker-compose` section in the Solution Explorer, and click `Set as Startup Project`
+    3. Select either Debug or Release at the top and click the `Docker Compose` button to run.
+
+### Running the boilerplate independently
+
+If you're behind Nginx or a similar reverse proxy setup, you can either:
+
+1. Adjust the compose file so it no longer contains the Nginx container
+2. Run only the boilerplate (you will have to run PostgreSQL separately):
+    - Adjust the `DefaultConnection` in appsettings.json in accordance with your database
+    - run `docker build . --tag boiler`
+    - run `docker run boiler -p 3000:80 --name boiler`
 
 ### Running on Windows
 
