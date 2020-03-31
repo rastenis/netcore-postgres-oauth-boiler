@@ -1,6 +1,6 @@
 # netcore-postgres-oauth-boiler
 
-A basic .NET Core website boilerplate using PostgreSQL for storage, adminer for db management, Let's Encrypt for SSL certificates and Nginx for routing.
+A basic .NET Core website boilerplate using PostgreSQL for storage, Adminer for db management, Let's Encrypt for SSL certificates and Nginx for routing.
 
 [Demo website.](https://netcore.demos.matasr.com)
 
@@ -9,7 +9,7 @@ A basic .NET Core website boilerplate using PostgreSQL for storage, adminer for 
 -   Vanilla .NET Core Server Setup:
     -   Razor pages, upholstered with the Materialize css toolkit
     -   Server -> client data rendering demo
-    -   Native Entity Framework database interface
+    -   Native Entity Framework database interface, with PostgreSQL
     -   Asynchronous design
     -   Auth gated route examples
 -   User authentication via:
@@ -23,6 +23,7 @@ A basic .NET Core website boilerplate using PostgreSQL for storage, adminer for 
     -   Hosting modes:
         -   Self hosted mode (443/80 port access required)
         -   Simple mode (just the Dockerfile, http only), for use with reverse proxy configurations
+-   A lightweight PostgreSQL management tool included - Adminer
 
 ## Configuration
 
@@ -56,6 +57,13 @@ For an explanation of the docker-compose file separation, take a look at [Runnin
 2. Right-click on the `docker-compose` section in the Solution Explorer, and click `Set as Startup Project`
 3. Select either Debug or Release at the top and click the `Docker Compose` button to run.
 
+### Overview of services
+
+1. Boilerplate runs on port 3000, and is accessible through the configured domain with managed TLS
+2. PostgreSQL runs on 5432
+3. Adminer (for managing PostgreSQL) runs and can be accessed on port 8080 (localhost:8080 in a browser).
+4. Nginx runs on ports 80 and 443. Make sure no servers/web hosts/etc. are using those ports.
+
 ### Running the boilerplate independently
 
 If you're behind Nginx or a similar reverse proxy setup, you can either:
@@ -80,13 +88,10 @@ This seems to be a symlink issue with Windows Docker containers as well. After r
 
 ### Information & Sources
 
-Documentation for ASP.NET Core can be found here: [.NET Core docs.](https://docs.microsoft.com/aspnet/core)
-
-Read about PostgreSQL here: [PostgreSQL.](https://www.postgresql.org/docs/12/tutorial-start.html)
-
-Guide for Materialize UI: [Getting started with Materialize.](https://materializecss.com/getting-started.html)
-
-C# Reference: [C# docs.](https://docs.microsoft.com/en-us/dotnet/csharp/)
+-   Documentation for ASP.NET Core can be found here: [.NET Core docs.](https://docs.microsoft.com/aspnet/core)
+-   Read about PostgreSQL here: [PostgreSQL.](https://www.postgresql.org/docs/12/tutorial-start.html)
+-   Guide for Materialize UI: [Getting started with Materialize.](https://materializecss.com/getting-started.html)
+-   C# Reference: [C# docs.](https://docs.microsoft.com/en-us/dotnet/csharp/)
 
 ### Contribution & Support
 
