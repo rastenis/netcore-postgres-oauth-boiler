@@ -1,16 +1,13 @@
-using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using netcore_postgres_oauth_boiler.Models;
-using Microsoft.AspNetCore.HttpOverrides;
-using System.Net;
 using netcore_postgres_oauth_boiler.Models.Config;
+using System;
 
 namespace netcore_postgres_oauth_boiler
 {

@@ -153,21 +153,21 @@ namespace netcore_postgres_oauth_boiler.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> Google()
+        public IActionResult Google()
         {
             string googleUrl = $"https://accounts.google.com/o/oauth2/auth?response_type=code&redirect_uri=https://{this.Request.Host}/Auth/GoogleCallback&scope=email+profile+openid&client_id={_oauthConfig.Value.Google.client_id}";
             return Redirect(googleUrl);
         }
 
         [HttpGet]
-        public async Task<IActionResult> Github()
+        public IActionResult Github()
         {
             string GithubUrl = $"https://github.com/login/oauth/authorize?scope=user&client_id={_oauthConfig.Value.Github.client_id}";
             return Redirect(GithubUrl);
         }
 
         [HttpGet]
-        public async Task<IActionResult> Reddit()
+        public IActionResult Reddit()
         {
             string RedditUrl = $"https://www.reddit.com/api/v1/authorize?scope=identity&client_id={_oauthConfig.Value.Reddit.client_id}&response_type=code&state={Guid.NewGuid().ToString()}&redirect_uri=https://{this.Request.Host}/Auth/RedditCallback&duration=temporary";
             return Redirect(RedditUrl);

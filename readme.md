@@ -1,26 +1,22 @@
 # netcore-postgres-oauth-boiler
 
-A basic .NET Core website boilerplate using PostgreSQL for storage, adminer for db management, and Nginx for SSL certificates & routing.
+A basic .NET Core website boilerplate using PostgreSQL for storage, adminer for db management, Let's Encrypt for SSL certificates and Nginx for routing.
 
 [Demo website.](https://netcore.demos.matasr.com)
 
 ## Features
 
 -   Vanilla .NET Core Server Setup:
-
-    -   Razor pages for templating
+    -   Razor pages, upholstered with the Materialize css toolkit
     -   Server -> client data rendering demo
     -   Native Entity Framework database interface
     -   Asynchronous design
     -   Auth gated route examples
-
 -   User authentication via:
-
     -   Regular email/password
     -   Google
     -   Github
     -   Reddit
-
 -   Auth method merging, linking and unlinking of social auth accounts
 -   TLS/HTTPS:
     -   Automatic certificate generation powered by Let's Encrypt
@@ -56,9 +52,9 @@ For an explanation of the docker-compose file separation, take a look at [Runnin
 
 -   Through Visual Studio:
 
-    1. Launch Visual Studio
-    2. Right-click on the `docker-compose` section in the Solution Explorer, and click `Set as Startup Project`
-    3. Select either Debug or Release at the top and click the `Docker Compose` button to run.
+1. Launch Visual Studio
+2. Right-click on the `docker-compose` section in the Solution Explorer, and click `Set as Startup Project`
+3. Select either Debug or Release at the top and click the `Docker Compose` button to run.
 
 ### Running the boilerplate independently
 
