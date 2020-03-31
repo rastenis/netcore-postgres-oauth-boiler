@@ -2,7 +2,7 @@
 
 A basic .NET Core website boilerplate using PostgreSQL for storage, adminer for db management, and Nginx for SSL certificates & routing.
 
-<!-- [Demo website.](https://netcore.demos.mtr.lt) -->
+[Demo website.](https://netcore.demos.matasr.com)
 
 ## Features
 
@@ -30,9 +30,8 @@ A basic .NET Core website boilerplate using PostgreSQL for storage, adminer for 
 
 ## Configuration
 
-1.  Copy the boiler.conf from nginx-certbot/example to nginx-certbot/ and adjust according to your domain names. The domain should point to the IP of the machine you're running this project on.
-2.  Open the docker-compose file you're going to use (depends on your platform) and set `CERTBOT_EMAIL=XXX` to your email for Let's Encrypt certificate generation.
-3.  The file `appsettingsExample.json` needs to be renamed to `appsettings.json` with your own OAuth keys:
+1.  Open the docker-compose file you're going to use (depends on your platform) and set `CERTBOT_EMAIL` to your email for Let's Encrypt certificate generation. Moreover, set `DOMAIN` to your domain name. The domain should point to the IP of the machine you're running this project on.
+2.  The file `appsettingsExample.json` needs to be renamed to `appsettings.json` with your own OAuth keys:
 
 -   The process for obtaining a Google key is described [here](https://developers.google.com/identity/protocols/OAuth2).
 -   The method to create a Github app in order to get an API key is described [here](https://developer.github.com/apps/building-oauth-apps/creating-an-oauth-app/).

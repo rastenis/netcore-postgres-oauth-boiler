@@ -50,4 +50,3 @@ data
 
 appsettings.json
 
-nginx-certbot/*.conf
