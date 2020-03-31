@@ -173,7 +173,7 @@ namespace netcore_postgres_oauth_boiler.Controllers
         [HttpGet]
         public async Task<IActionResult> Reddit()
         {
-            string RedditUrl = $"https://github.com/login/oauth/authorize?scope=identity&client_id={_oauthConfig.Value.Reddit.client_id}&response_type=core&state={Guid.NewGuid().ToString()}&redirect_uri=https://{this.Request.Host}/Auth/RedditCallback&duration=temporary";
+            string RedditUrl = $"https://www.reddit.com/api/v1/authorize?scope=identity&client_id={_oauthConfig.Value.Reddit.client_id}&response_type=code&state={Guid.NewGuid().ToString()}&redirect_uri=https://{this.Request.Host}/Auth/RedditCallback&duration=temporary";
             return Redirect(RedditUrl);
         }
 
@@ -291,13 +291,13 @@ namespace netcore_postgres_oauth_boiler.Controllers
 
             if (userToken == null)
             {
-                TempData["error"] = "Could not link your account.";
+                TempData["error"] = "Could not link your Github account.";
                 return Redirect("/");
             }
 
             if (string.IsNullOrEmpty(userToken.access_token))
             {
-                TempData["error"] = "Could not link your account. Provider returned no info.";
+                TempData["error"] = "Could not link your account. Provider (Github) returned no info.";
                 return Redirect("/");
             }
 
@@ -308,7 +308,7 @@ namespace netcore_postgres_oauth_boiler.Controllers
 
             if (userinfo is null)
             {
-                TempData["error"] = "Identity could not be resolved.";
+                TempData["error"] = "Github identity could not be resolved.";
                 return Redirect("/");
             }
 
@@ -373,24 +373,90 @@ namespace netcore_postgres_oauth_boiler.Controllers
                 return Redirect("/");
             }
 
-            Dictionary<string, string> parameters = new Dictionary<string, string>();
-            parameters["code"] = query["code"];
-            parameters["redirect_uri"] = $"https://{this.Request.Host}/Auth/RedditCallback";
-
-
             Dictionary<string, string> headers = new Dictionary<string, string>();
-            // TODO: client_id:client_secret in b64
-            headers.Add("Authorization", $"Basic {WIP}");
+            var authBytes = Encoding.UTF8.GetBytes($"{_oauthConfig.Value.Reddit.client_id}:{_oauthConfig.Value.Reddit.client_secret}");
+            headers.Add("Authorization", $"Basic {Convert.ToBase64String(authBytes)}");
 
-            RedditToken userToken = await _post<RedditToken>("https://www.reddit.com/api/v1/access_token", parameters);
+            RedditToken userToken = await _post<RedditToken>("https://www.reddit.com/api/v1/access_token", null, headers, new StringContent($"grant_type=authorization_code&code={query["code"]}&redirect_uri=https://{this.Request.Host}/Auth/RedditCallback",
+                                              Encoding.UTF8,
+                                              "application/x-www-form-urlencoded"));
+
+            if (userToken == null)
+            {
+                TempData["error"] = "Could not link your Reddit account.";
+                return Redirect("/");
+            }
+
+            if (string.IsNullOrEmpty(userToken.access_token))
+            {
+                TempData["error"] = "Could not link your account. Provider (Reddit) returned no info.";
+                return Redirect("/");
+            }
+
+            headers = new Dictionary<string, string>();
+            headers.Add("Authorization", $"bearer {userToken.access_token}");
+
+            RedditUserInfo userinfo = await _get<RedditUserInfo>("https://oauth.reddit.com/api/v1/me", headers);
+
+            if (userinfo is null)
+            {
+                TempData["error"] = "Reddit identity could not be resolved.";
+                return Redirect("/");
+            }
+
+
+            // Fetching data
+            var userWithMatchingToken = await _context.Users.Where(c => c.Credentials.Any(cred => cred.Provider == AuthProvider.REDDIT && cred.Token == userinfo.Id)).FirstOrDefaultAsync();
+
+            // Github does not have force-verified emails, so we do not look for email collisions.
+
+            // If user is logged in and the auth token is not registered yet, link.
+            if (HttpContext.Session.GetString("user") != null)
+            {
+                var user = await _context.Users.Where(c => c.Id == HttpContext.Session.GetString("user")).FirstOrDefaultAsync();
+
+                // If someone already has that token OR there is a user that has the email but is not the same user.
+                if (userWithMatchingToken != null)
+                {
+                    TempData["error"] = "This Reddit account is already linked!";
+                    return Redirect("/");
+                }
+
+                // Adding the token and saving
+                user.Credentials.Add(new Credential(AuthProvider.REDDIT, userinfo.Id));
+                await _context.SaveChangesAsync();
+
+                TempData["info"] = "You have linked your Reddit account!";
+                return Redirect("/");
+            }
+
+            // If user is NOT logged in, check if linked to some account, and log user in.
+            if (userWithMatchingToken != null)
+            {
+                HttpContext.Session.SetString("user", userWithMatchingToken.Id);
+                return Redirect("/");
+            }
+
+            // Creating a new account:
+            User u = new User(null, "", new Credential(AuthProvider.REDDIT, userinfo.Id));
+            _context.Users.Add(u);
+            await _context.SaveChangesAsync();
+
+            // Assigning user id to session
+            HttpContext.Session.SetString("user", u.Id);
+
+            // Setting info alert
+            TempData["info"] = "You have successfully created an account with Reddit!";
 
             return Redirect("/");
         }
 
-        public async Task<T> _post<T>(string path, Dictionary<string, string> body, Dictionary<string, string> headers = null)
+        public async Task<T> _post<T>(string path, Dictionary<string, string> body, Dictionary<string, string> headers = null, StringContent customContent = null)
         {
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, path);
-            request.Content = new StringContent(body != null ? JsonConvert.SerializeObject(body) : "",
+
+            // customContent allows for using application/x-www-form-urlencoded 
+            request.Content = customContent ?? new StringContent(body != null ? JsonConvert.SerializeObject(body) : "",
                                                 Encoding.UTF8,
                                                 "application/json");
 
@@ -438,14 +504,15 @@ namespace netcore_postgres_oauth_boiler.Controllers
         public string refresh_token { get; set; }
     }
 
-    public class GithubToken
+    public class OAuthTOken
     {
         public string access_token { get; set; }
         public string token_type { get; set; }
         public string scope { get; set; }
     }
 
-    public class RedditToken : GithubToken { }
+    public class RedditToken : OAuthTOken { }
+    public class GithubToken : OAuthTOken { }
 
     public class GithubUserInfo
     {
@@ -455,5 +522,175 @@ namespace netcore_postgres_oauth_boiler.Controllers
         public string id { get; set; }
         public string name { get; set; }
         // And others...
+    }
+
+
+    // <auto-generated />
+    //
+    // To parse this JSON data, add NuGet 'Newtonsoft.Json' then do:
+    //
+    //    using QuickType;
+    //
+    //    var welcome = Welcome.FromJson(jsonString);
+
+
+
+    public class RedditUserInfo
+    {
+        [JsonProperty("is_employee")]
+        public bool IsEmployee { get; set; }
+
+        [JsonProperty("seen_layout_switch")]
+        public bool SeenLayoutSwitch { get; set; }
+
+        [JsonProperty("has_visited_new_profile")]
+        public bool HasVisitedNewProfile { get; set; }
+
+        [JsonProperty("pref_no_profanity")]
+        public bool PrefNoProfanity { get; set; }
+
+        [JsonProperty("has_external_account")]
+        public bool HasExternalAccount { get; set; }
+
+        [JsonProperty("pref_geopopular")]
+        public string PrefGeopopular { get; set; }
+
+        [JsonProperty("seen_redesign_modal")]
+        public bool SeenRedesignModal { get; set; }
+
+        [JsonProperty("pref_show_trending")]
+        public bool PrefShowTrending { get; set; }
+
+        [JsonProperty("is_sponsor")]
+        public bool IsSponsor { get; set; }
+
+        [JsonProperty("gold_expiration")]
+        public object GoldExpiration { get; set; }
+
+        [JsonProperty("has_gold_subscription")]
+        public bool HasGoldSubscription { get; set; }
+
+        [JsonProperty("num_friends")]
+        public long NumFriends { get; set; }
+
+        [JsonProperty("has_android_subscription")]
+        public bool HasAndroidSubscription { get; set; }
+
+        [JsonProperty("verified")]
+        public bool Verified { get; set; }
+
+        [JsonProperty("pref_autoplay")]
+        public bool PrefAutoplay { get; set; }
+
+        [JsonProperty("coins")]
+        public long Coins { get; set; }
+
+        [JsonProperty("has_paypal_subscription")]
+        public bool HasPaypalSubscription { get; set; }
+
+        [JsonProperty("has_subscribed_to_premium")]
+        public bool HasSubscribedToPremium { get; set; }
+
+        [JsonProperty("id")]
+        public string Id { get; set; }
+
+        [JsonProperty("has_stripe_subscription")]
+        public bool HasStripeSubscription { get; set; }
+
+        [JsonProperty("seen_premium_adblock_modal")]
+        public bool SeenPremiumAdblockModal { get; set; }
+
+        [JsonProperty("can_create_subreddit")]
+        public bool CanCreateSubreddit { get; set; }
+
+        [JsonProperty("over_18")]
+        public bool Over18 { get; set; }
+
+        [JsonProperty("is_gold")]
+        public bool IsGold { get; set; }
+
+        [JsonProperty("is_mod")]
+        public bool IsMod { get; set; }
+
+        [JsonProperty("suspension_expiration_utc")]
+        public object SuspensionExpirationUtc { get; set; }
+
+        [JsonProperty("has_verified_email")]
+        public bool HasVerifiedEmail { get; set; }
+
+        [JsonProperty("is_suspended")]
+        public bool IsSuspended { get; set; }
+
+        [JsonProperty("pref_video_autoplay")]
+        public bool PrefVideoAutoplay { get; set; }
+
+        [JsonProperty("can_edit_name")]
+        public bool CanEditName { get; set; }
+
+        [JsonProperty("in_redesign_beta")]
+        public bool InRedesignBeta { get; set; }
+
+        [JsonProperty("icon_img")]
+        public Uri IconImg { get; set; }
+
+        [JsonProperty("pref_nightmode")]
+        public bool PrefNightmode { get; set; }
+
+        [JsonProperty("oauth_client_id")]
+        public string OauthClientId { get; set; }
+
+        [JsonProperty("hide_from_robots")]
+        public bool HideFromRobots { get; set; }
+
+        [JsonProperty("link_karma")]
+        public long LinkKarma { get; set; }
+
+        [JsonProperty("force_password_reset")]
+        public bool ForcePasswordReset { get; set; }
+
+        [JsonProperty("seen_give_award_tooltip")]
+        public bool SeenGiveAwardTooltip { get; set; }
+
+        [JsonProperty("inbox_count")]
+        public long InboxCount { get; set; }
+
+        [JsonProperty("pref_top_karma_subreddits")]
+        public bool PrefTopKarmaSubreddits { get; set; }
+
+        [JsonProperty("pref_show_snoovatar")]
+        public bool PrefShowSnoovatar { get; set; }
+
+        [JsonProperty("name")]
+        public string Name { get; set; }
+
+        [JsonProperty("pref_clickgadget")]
+        public long PrefClickgadget { get; set; }
+
+        [JsonProperty("created")]
+        public long Created { get; set; }
+
+        [JsonProperty("gold_creddits")]
+        public long GoldCreddits { get; set; }
+
+        [JsonProperty("created_utc")]
+        public long CreatedUtc { get; set; }
+
+        [JsonProperty("has_ios_subscription")]
+        public bool HasIosSubscription { get; set; }
+
+        [JsonProperty("pref_show_twitter")]
+        public bool PrefShowTwitter { get; set; }
+
+        [JsonProperty("in_beta")]
+        public bool InBeta { get; set; }
+
+        [JsonProperty("comment_karma")]
+        public long CommentKarma { get; set; }
+
+        [JsonProperty("has_subscribed")]
+        public bool HasSubscribed { get; set; }
+
+        [JsonProperty("seen_subreddit_chat_ftux")]
+        public bool SeenSubredditChatFtux { get; set; }
     }
 }
