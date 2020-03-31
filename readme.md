@@ -74,6 +74,14 @@ If you're behind Nginx or a similar reverse proxy setup, you can either:
 
 Docker on Windows has an open issue with local volume mapping permissions, which results in PostgreSQL not being able to write to a (relative) local directory. Thus, when running on Windows (via run.sh), an external volume is created, which is managed by Docker.
 
+Moreover, if you encounter a PR_END_OF_FILE_ERROR when trying to load the website, try executing:
+
+```
+$ docker exec nginx bash -c "mv /etc/nginx/conf.d/boiler.conf{.nokey,} ; nginx -s reload"
+```
+
+This seems to be a symlink issue with Windows Docker containers as well. After renaming the file once, it does not need to be touched anymore (unless you purge the nginx container).
+
 ### Information & Sources
 
 Documentation for ASP.NET Core can be found here: [.NET Core docs.](https://docs.microsoft.com/aspnet/core)

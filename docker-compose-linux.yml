@@ -13,10 +13,10 @@ services:
         restart: always
         build:
             context: ./nginx-certbot
+            args:
+                DOMAIN: server.company.com
         environment:
-            CERTBOT_EMAIL: example@email.com
-            ENVSUBST_VARS: DOMAIN
-            DOMAIN: server.company.com
+            CERTBOT_EMAIL: example.email@something.com
         ports:
             - 80:80
             - 443:443
