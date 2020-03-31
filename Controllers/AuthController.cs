@@ -346,7 +346,7 @@ namespace netcore_postgres_oauth_boiler.Controllers
             }
 
             // Creating a new account:
-            User u = new User(userinfo.Email,"", new Credential(AuthProvider.GITHUB, userinfo.Id));
+            User u = new User(userinfo.Email, "", new Credential(AuthProvider.GITHUB, userinfo.Id));
             _context.Users.Add(u);
             await _context.SaveChangesAsync();
 

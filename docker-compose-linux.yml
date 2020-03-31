@@ -3,7 +3,7 @@
 services:
     boiler:
         build:
-            context: ./netcore-postgres-oauth-boiler
+            context: ./
         ports:
             - "3000:80"
         container_name: boiler
@@ -12,12 +12,12 @@ services:
         container_name: nginx
         restart: always
         build:
-        context: ./nginx-certbot
+            context: ./nginx-certbot
         environment:
-            - CERTBOT_EMAIL=someEmail@example.com
+            - CERTBOT_EMAIL=xxxxxxxxxxxxxx
         ports:
-            - "80:80"
-            - "443:443"
+            - 80:80
+            - 443:443
         volumes:
             - ./data/certs:/etc/letsencrypt
     db:
@@ -27,6 +27,8 @@ services:
             POSTGRES_PASSWORD: example
         volumes:
             - ./data/db:/var/lib/postgresql/data
+        ports:
+            - 5432:5432
     adminer:
         image: adminer
         restart: always
