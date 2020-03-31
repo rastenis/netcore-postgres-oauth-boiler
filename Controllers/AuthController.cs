@@ -6,18 +6,17 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using netcore_postgres_oauth_boiler.Models;
 using netcore_postgres_oauth_boiler.Models.Config;
-using Newtonsoft.Json;
+using netcore_postgres_oauth_boiler.Utilities;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
 using System.Linq;
-using System.Net;
 using System.Net.Http;
-using System.Net.Http.Headers;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using static netcore_postgres_oauth_boiler.Models.OAuthData;
+
 
 namespace netcore_postgres_oauth_boiler.Controllers
 {
@@ -25,19 +24,16 @@ namespace netcore_postgres_oauth_boiler.Controllers
     {
 
         private readonly DatabaseContext _context;
-        static readonly HttpClient client = new HttpClient();
 
-
+        private readonly Request requester;
         private readonly ILogger<AuthController> _logger;
         private readonly IOptions<OAuthConfig> _oauthConfig;
         public AuthController(ILogger<AuthController> logger, IOptions<OAuthConfig> googleConfig, DatabaseContext context)
         {
-            client.DefaultRequestHeaders.Add("Accept", "application/json");
-            client.DefaultRequestHeaders.Add("User-Agent", "netcore-postgres-oauth-boiler/0.0.1");
-
             _logger = logger;
             _context = context;
             _oauthConfig = googleConfig;
+            requester = new Request();
         }
         public IActionResult Login()
         {
@@ -166,8 +162,8 @@ namespace netcore_postgres_oauth_boiler.Controllers
         [HttpGet]
         public async Task<IActionResult> Github()
         {
-            string GithubrUrl = $"https://github.com/login/oauth/authorize?scope=read:user&client_id={_oauthConfig.Value.Github.client_id}";
-            return Redirect(GithubrUrl);
+            string GithubUrl = $"https://github.com/login/oauth/authorize?scope=user&client_id={_oauthConfig.Value.Github.client_id}";
+            return Redirect(GithubUrl);
         }
 
         [HttpGet]
@@ -193,8 +189,7 @@ namespace netcore_postgres_oauth_boiler.Controllers
             parameters["client_secret"] = _oauthConfig.Value.Google.client_secret;
             parameters["grant_type"] = "authorization_code";
 
-
-            GoogleToken userToken = await _post<GoogleToken>("https://accounts.google.com/o/oauth2/token", parameters);
+            GoogleToken userToken = await requester.Post<GoogleToken>("https://accounts.google.com/o/oauth2/token", parameters);
 
             if (userToken == null)
             {
@@ -258,7 +253,7 @@ namespace netcore_postgres_oauth_boiler.Controllers
             }
 
             // Creating a new account:
-            User u = new User(null, "", new Credential(AuthProvider.GOOGLE, validPayload.Subject));
+            User u = new User(validPayload.Email, "", new Credential(AuthProvider.GOOGLE, validPayload.Subject));
             _context.Users.Add(u);
             await _context.SaveChangesAsync();
 
@@ -287,7 +282,7 @@ namespace netcore_postgres_oauth_boiler.Controllers
             parameters["client_secret"] = _oauthConfig.Value.Github.client_secret;
             parameters["state"] = Guid.NewGuid().ToString();
 
-            GithubToken userToken = await _post<GithubToken>("https://github.com/login/oauth/access_token", parameters);
+            GithubToken userToken = await requester.Post<GithubToken>("https://github.com/login/oauth/access_token", parameters);
 
             if (userToken == null)
             {
@@ -304,7 +299,7 @@ namespace netcore_postgres_oauth_boiler.Controllers
             Dictionary<string, string> headers = new Dictionary<string, string>();
             headers.Add("Authorization", $"token {userToken.access_token}");
 
-            GithubUserInfo userinfo = await _get<GithubUserInfo>("https://api.github.com/user", headers);
+            GithubUserInfo userinfo = await requester.Get<GithubUserInfo>("https://api.github.com/user", headers);
 
             if (userinfo is null)
             {
@@ -313,8 +308,8 @@ namespace netcore_postgres_oauth_boiler.Controllers
             }
 
             // Fetching data
-            var userWithMatchingToken = await _context.Users.Where(c => c.Credentials.Any(cred => cred.Provider == AuthProvider.GITHUB && cred.Token == userinfo.id)).FirstOrDefaultAsync();
-            var userWithMatchingEmail = await _context.Users.Where(c => c.Email == userinfo.email).FirstOrDefaultAsync();
+            var userWithMatchingToken = await _context.Users.Where(c => c.Credentials.Any(cred => cred.Provider == AuthProvider.GITHUB && cred.Token == userinfo.Id)).FirstOrDefaultAsync();
+            var userWithMatchingEmail = await _context.Users.Where(c => c.Email != null && c.Email == userinfo.Email).FirstOrDefaultAsync();
 
             // If user is logged in and the auth token is not registered yet, link.
             if (HttpContext.Session.GetString("user") != null)
@@ -329,7 +324,7 @@ namespace netcore_postgres_oauth_boiler.Controllers
                 }
 
                 // Adding the token and saving
-                user.Credentials.Add(new Credential(AuthProvider.GITHUB, userinfo.id));
+                user.Credentials.Add(new Credential(AuthProvider.GITHUB, userinfo.Id));
                 await _context.SaveChangesAsync();
 
                 TempData["info"] = "You have linked your Github account!";
@@ -344,14 +339,14 @@ namespace netcore_postgres_oauth_boiler.Controllers
             }
 
             // If NOT linked, create a new account ONLY if that email is not used already.`
-            if (userWithMatchingEmail?.Email == userinfo.email)
+            if (userinfo.Email != null && userWithMatchingEmail?.Email == userinfo.Email)
             {
                 TempData["error"] = "This Github account's email has been used to create an account here, so you can not link it!";
                 return Redirect("/");
             }
 
             // Creating a new account:
-            User u = new User(null, "", new Credential(AuthProvider.GITHUB, userinfo.id));
+            User u = new User(userinfo.Email,"", new Credential(AuthProvider.GITHUB, userinfo.Id));
             _context.Users.Add(u);
             await _context.SaveChangesAsync();
 
@@ -377,7 +372,7 @@ namespace netcore_postgres_oauth_boiler.Controllers
             var authBytes = Encoding.UTF8.GetBytes($"{_oauthConfig.Value.Reddit.client_id}:{_oauthConfig.Value.Reddit.client_secret}");
             headers.Add("Authorization", $"Basic {Convert.ToBase64String(authBytes)}");
 
-            RedditToken userToken = await _post<RedditToken>("https://www.reddit.com/api/v1/access_token", null, headers, new StringContent($"grant_type=authorization_code&code={query["code"]}&redirect_uri=https://{this.Request.Host}/Auth/RedditCallback",
+            RedditToken userToken = await requester.Post<RedditToken>("https://www.reddit.com/api/v1/access_token", null, headers, new StringContent($"grant_type=authorization_code&code={query["code"]}&redirect_uri=https://{this.Request.Host}/Auth/RedditCallback",
                                               Encoding.UTF8,
                                               "application/x-www-form-urlencoded"));
 
@@ -396,7 +391,7 @@ namespace netcore_postgres_oauth_boiler.Controllers
             headers = new Dictionary<string, string>();
             headers.Add("Authorization", $"bearer {userToken.access_token}");
 
-            RedditUserInfo userinfo = await _get<RedditUserInfo>("https://oauth.reddit.com/api/v1/me", headers);
+            RedditUserInfo userinfo = await requester.Get<RedditUserInfo>("https://oauth.reddit.com/api/v1/me", headers);
 
             if (userinfo is null)
             {
@@ -404,11 +399,10 @@ namespace netcore_postgres_oauth_boiler.Controllers
                 return Redirect("/");
             }
 
-
             // Fetching data
             var userWithMatchingToken = await _context.Users.Where(c => c.Credentials.Any(cred => cred.Provider == AuthProvider.REDDIT && cred.Token == userinfo.Id)).FirstOrDefaultAsync();
 
-            // Github does not have force-verified emails, so we do not look for email collisions.
+            // Reddit does not have force-verified emails, so we do not look for email collisions.
 
             // If user is logged in and the auth token is not registered yet, link.
             if (HttpContext.Session.GetString("user") != null)
@@ -450,247 +444,5 @@ namespace netcore_postgres_oauth_boiler.Controllers
 
             return Redirect("/");
         }
-
-        public async Task<T> _post<T>(string path, Dictionary<string, string> body, Dictionary<string, string> headers = null, StringContent customContent = null)
-        {
-            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, path);
-
-            // customContent allows for using application/x-www-form-urlencoded 
-            request.Content = customContent ?? new StringContent(body != null ? JsonConvert.SerializeObject(body) : "",
-                                                Encoding.UTF8,
-                                                "application/json");
-
-            // Adding headers if any
-            foreach (var header in headers ?? new Dictionary<string, string>())
-            {
-                request.Headers.Add(header.Key, header.Value);
-            }
-
-            var response = await client.SendAsync(request);
-
-            // Deserializing Google auth info
-            string responseContent = await response.Content.ReadAsStringAsync();
-            T userToken = JsonConvert.DeserializeObject<T>(responseContent);
-
-            return userToken;
-        }
-
-        public async Task<T> _get<T>(string path, Dictionary<string, string> headers = null)
-        {
-            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, path);
-
-            // Adding headers if any
-            foreach (var header in headers ?? new Dictionary<string, string>())
-            {
-                request.Headers.Add(header.Key, header.Value);
-            }
-
-            var response = await client.SendAsync(request);
-
-            // Deserializing Google auth info
-            string responseContent = await response.Content.ReadAsStringAsync();
-            T userToken = JsonConvert.DeserializeObject<T>(responseContent);
-
-            return userToken;
-        }
-
-    }
-    public class GoogleToken
-    {
-        public string access_token { get; set; }
-        public string token_type { get; set; }
-        public int expires_in { get; set; }
-        public string id_token { get; set; }
-        public string refresh_token { get; set; }
-    }
-
-    public class OAuthTOken
-    {
-        public string access_token { get; set; }
-        public string token_type { get; set; }
-        public string scope { get; set; }
-    }
-
-    public class RedditToken : OAuthTOken { }
-    public class GithubToken : OAuthTOken { }
-
-    public class GithubUserInfo
-    {
-        public string avatar_url { get; set; }
-        public string created_at { get; set; }
-        public string email { get; set; }
-        public string id { get; set; }
-        public string name { get; set; }
-        // And others...
-    }
-
-
-    // <auto-generated />
-    //
-    // To parse this JSON data, add NuGet 'Newtonsoft.Json' then do:
-    //
-    //    using QuickType;
-    //
-    //    var welcome = Welcome.FromJson(jsonString);
-
-
-
-    public class RedditUserInfo
-    {
-        [JsonProperty("is_employee")]
-        public bool IsEmployee { get; set; }
-
-        [JsonProperty("seen_layout_switch")]
-        public bool SeenLayoutSwitch { get; set; }
-
-        [JsonProperty("has_visited_new_profile")]
-        public bool HasVisitedNewProfile { get; set; }
-
-        [JsonProperty("pref_no_profanity")]
-        public bool PrefNoProfanity { get; set; }
-
-        [JsonProperty("has_external_account")]
-        public bool HasExternalAccount { get; set; }
-
-        [JsonProperty("pref_geopopular")]
-        public string PrefGeopopular { get; set; }
-
-        [JsonProperty("seen_redesign_modal")]
-        public bool SeenRedesignModal { get; set; }
-
-        [JsonProperty("pref_show_trending")]
-        public bool PrefShowTrending { get; set; }
-
-        [JsonProperty("is_sponsor")]
-        public bool IsSponsor { get; set; }
-
-        [JsonProperty("gold_expiration")]
-        public object GoldExpiration { get; set; }
-
-        [JsonProperty("has_gold_subscription")]
-        public bool HasGoldSubscription { get; set; }
-
-        [JsonProperty("num_friends")]
-        public long NumFriends { get; set; }
-
-        [JsonProperty("has_android_subscription")]
-        public bool HasAndroidSubscription { get; set; }
-
-        [JsonProperty("verified")]
-        public bool Verified { get; set; }
-
-        [JsonProperty("pref_autoplay")]
-        public bool PrefAutoplay { get; set; }
-
-        [JsonProperty("coins")]
-        public long Coins { get; set; }
-
-        [JsonProperty("has_paypal_subscription")]
-        public bool HasPaypalSubscription { get; set; }
-
-        [JsonProperty("has_subscribed_to_premium")]
-        public bool HasSubscribedToPremium { get; set; }
-
-        [JsonProperty("id")]
-        public string Id { get; set; }
-
-        [JsonProperty("has_stripe_subscription")]
-        public bool HasStripeSubscription { get; set; }
-
-        [JsonProperty("seen_premium_adblock_modal")]
-        public bool SeenPremiumAdblockModal { get; set; }
-
-        [JsonProperty("can_create_subreddit")]
-        public bool CanCreateSubreddit { get; set; }
-
-        [JsonProperty("over_18")]
-        public bool Over18 { get; set; }
-
-        [JsonProperty("is_gold")]
-        public bool IsGold { get; set; }
-
-        [JsonProperty("is_mod")]
-        public bool IsMod { get; set; }
-
-        [JsonProperty("suspension_expiration_utc")]
-        public object SuspensionExpirationUtc { get; set; }
-
-        [JsonProperty("has_verified_email")]
-        public bool HasVerifiedEmail { get; set; }
-
-        [JsonProperty("is_suspended")]
-        public bool IsSuspended { get; set; }
-
-        [JsonProperty("pref_video_autoplay")]
-        public bool PrefVideoAutoplay { get; set; }
-
-        [JsonProperty("can_edit_name")]
-        public bool CanEditName { get; set; }
-
-        [JsonProperty("in_redesign_beta")]
-        public bool InRedesignBeta { get; set; }
-
-        [JsonProperty("icon_img")]
-        public Uri IconImg { get; set; }
-
-        [JsonProperty("pref_nightmode")]
-        public bool PrefNightmode { get; set; }
-
-        [JsonProperty("oauth_client_id")]
-        public string OauthClientId { get; set; }
-
-        [JsonProperty("hide_from_robots")]
-        public bool HideFromRobots { get; set; }
-
-        [JsonProperty("link_karma")]
-        public long LinkKarma { get; set; }
-
-        [JsonProperty("force_password_reset")]
-        public bool ForcePasswordReset { get; set; }
-
-        [JsonProperty("seen_give_award_tooltip")]
-        public bool SeenGiveAwardTooltip { get; set; }
-
-        [JsonProperty("inbox_count")]
-        public long InboxCount { get; set; }
-
-        [JsonProperty("pref_top_karma_subreddits")]
-        public bool PrefTopKarmaSubreddits { get; set; }
-
-        [JsonProperty("pref_show_snoovatar")]
-        public bool PrefShowSnoovatar { get; set; }
-
-        [JsonProperty("name")]
-        public string Name { get; set; }
-
-        [JsonProperty("pref_clickgadget")]
-        public long PrefClickgadget { get; set; }
-
-        [JsonProperty("created")]
-        public long Created { get; set; }
-
-        [JsonProperty("gold_creddits")]
-        public long GoldCreddits { get; set; }
-
-        [JsonProperty("created_utc")]
-        public long CreatedUtc { get; set; }
-
-        [JsonProperty("has_ios_subscription")]
-        public bool HasIosSubscription { get; set; }
-
-        [JsonProperty("pref_show_twitter")]
-        public bool PrefShowTwitter { get; set; }
-
-        [JsonProperty("in_beta")]
-        public bool InBeta { get; set; }
-
-        [JsonProperty("comment_karma")]
-        public long CommentKarma { get; set; }
-
-        [JsonProperty("has_subscribed")]
-        public bool HasSubscribed { get; set; }
-
-        [JsonProperty("seen_subreddit_chat_ftux")]
-        public bool SeenSubredditChatFtux { get; set; }
     }
 }
