@@ -25,7 +25,7 @@ namespace netcore_postgres_oauth_boiler.Controllers
 
         private readonly DatabaseContext _context;
 
-        public ProfileController(ILogger<AuthController> logger,  DatabaseContext context)
+        public ProfileController(ILogger<AuthController> logger, DatabaseContext context)
         {
             _context = context;
         }
@@ -44,7 +44,7 @@ namespace netcore_postgres_oauth_boiler.Controllers
             // Disallowing non logged-in users
             if (HttpContext.Session.GetString("user") == null)
             {
-                return View("Login");
+                return Redirect("/Auth/Login");
             }
 
             // Fetching the user
@@ -58,7 +58,7 @@ namespace netcore_postgres_oauth_boiler.Controllers
             }
 
             // Validating password
-            if (!Validator.validatePassword( newPassword))
+            if (!Validator.validatePassword(newPassword))
             {
                 TempData["error"] = "Password must be between 6 and a 100 characters.";
                 return View("Profile");
@@ -68,7 +68,8 @@ namespace netcore_postgres_oauth_boiler.Controllers
             try
             {
                 user.Password = BCrypt.Net.BCrypt.ValidateAndReplacePassword(currentPassword, user.Password, newPassword);
-            }catch(Exception e)
+            }
+            catch (Exception e)
             {
                 TempData["error"] = "Incorrect old password!";
                 return View("Profile");
@@ -84,5 +85,67 @@ namespace netcore_postgres_oauth_boiler.Controllers
             return Redirect("/");
         }
 
+
+        [HttpPost]
+        public async Task<IActionResult> ChangeOAuth(string submit)
+        {
+            // Loading session
+            if (!HttpContext.Session.IsAvailable)
+                await HttpContext.Session.LoadAsync();
+
+            // Disallowing non logged-in users
+            if (HttpContext.Session.GetString("user") == null)
+            {
+                return Redirect("/Auth/Login");
+            }
+
+            if (submit == null || submit == "")
+            {
+                TempData["error"] = $"No provider supplied.";
+                return View("Profile");
+            }
+
+            // Uppercasing first letter for formatting
+            submit = submit.First().ToString().ToUpper() + submit.Substring(1);
+
+            // Fetching the user
+            var user = await _context.Users.Where(c => Regex.IsMatch(c.Id, HttpContext.Session.GetString("user"))).FirstOrDefaultAsync();
+
+            AuthProvider provider;
+            if (!Enum.TryParse(submit.ToUpper(), out provider))
+            {
+                TempData["error"] = $"Invalid provider.";
+                return View("Profile");
+            }
+
+            Credential c = user.Credentials.FirstOrDefault(c => { return c.Provider == provider; });
+            if (c != null)
+            {
+                // Unlinking if possible
+                if (user.Password != null || (user.Credentials.Count > 1))
+                {
+                    user.Credentials.Remove(c);
+                }
+                else
+                {
+                    // Should not be reachable.
+                    TempData["error"] = $"You cannot unlink {submit}.";
+                    return View("Profile");
+                }
+            }
+            else
+            {
+                return Redirect($"/Auth/{submit}");
+            }
+
+            // Saving changes
+            await _context.SaveChangesAsync();
+
+            // Setting info alert to be shown
+            TempData["info"] = $"You have unlinked {submit}!";
+
+            // Rendering index
+            return Redirect("/");
+        }
     }
 }
