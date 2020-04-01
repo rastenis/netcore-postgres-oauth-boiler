@@ -102,7 +102,12 @@ namespace netcore_postgres_oauth_boiler.Controllers
                 return View("Register");
             }
 
-            // Verifying password
+            // validating data
+            if (!Validator.validatePassword(password) || !Validator.validateEmail(email))
+            {
+                TempData["error"] = "Email must be valid and the password must be between 6 and a 100 characters.";
+                return View("Register");
+            }
 
             // Checking for duplicates
             var count = await _context.Users.Where(c => Regex.IsMatch(c.Email, email)).CountAsync();

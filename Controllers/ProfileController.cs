@@ -58,7 +58,11 @@ namespace netcore_postgres_oauth_boiler.Controllers
             }
 
             // Validating password
-            // WIP
+            if (!Validator.validatePassword( newPassword))
+            {
+                TempData["error"] = "Password must be between 6 and a 100 characters.";
+                return View("Profile");
+            }
 
             // Verifying and changing password
             try
