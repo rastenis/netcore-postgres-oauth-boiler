@@ -102,6 +102,8 @@ namespace netcore_postgres_oauth_boiler.Controllers
                 return View("Register");
             }
 
+            // Verifying password
+
             // Checking for duplicates
             var count = await _context.Users.Where(c => Regex.IsMatch(c.Email, email)).CountAsync();
             if (count != 0)
@@ -109,7 +111,7 @@ namespace netcore_postgres_oauth_boiler.Controllers
                 TempData["error"] = "This email is already taken!";
                 return View("Register");
             }
-
+            
             // Saving the user
             User u = new User(email, password);
             _context.Users.Add(u);
