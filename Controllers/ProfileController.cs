@@ -36,14 +36,15 @@ namespace netcore_postgres_oauth_boiler.Controllers
                 return Redirect("/Auth/Login");
             }
 
-            var user = await _context.Users.Where(c => Regex.IsMatch(c.Id, HttpContext.Session.GetString("user"))).FirstOrDefaultAsync();
+            var user = await _context.Users.Where(c => Regex.IsMatch(c.Id, HttpContext.Session.GetString("user"))).Include("Credentials").FirstOrDefaultAsync();
 
             if (user.Credentials == null)
             {
                 user.Credentials = new List<Credential>();
             }
 
-            ViewData["HasPassword"] = user.Password != null;
+            var blankPassword = BCrypt.Net.BCrypt.Verify("", user.Password);
+            ViewData["HasPassword"] = user.Password != null && !blankPassword;
 
             ViewData["GoogleLinked"] = user.Credentials.Exists(c => { return c.Provider == AuthProvider.GOOGLE; });
             ViewData["GithubLinked"] = user.Credentials.Exists(c => { return c.Provider == AuthProvider.GITHUB; });
@@ -133,7 +134,7 @@ namespace netcore_postgres_oauth_boiler.Controllers
             submit = submit.First().ToString().ToUpper() + submit.Substring(1);
 
             // Fetching the user
-            var user = await _context.Users.Where(c => Regex.IsMatch(c.Id, HttpContext.Session.GetString("user"))).FirstOrDefaultAsync();
+            var user = await _context.Users.Where(c => Regex.IsMatch(c.Id, HttpContext.Session.GetString("user"))).Include("Credentials").FirstOrDefaultAsync();
 
             AuthProvider provider;
             if (!Enum.TryParse(submit.ToUpper(), out provider))

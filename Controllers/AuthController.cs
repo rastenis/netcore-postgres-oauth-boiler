@@ -238,7 +238,7 @@ namespace netcore_postgres_oauth_boiler.Controllers
             // If user is logged in and the auth token is not registered yet, link.
             if (HttpContext.Session.GetString("user") != null)
             {
-                var user = await _context.Users.Where(c => c.Id == HttpContext.Session.GetString("user")).FirstOrDefaultAsync();
+                var user = await _context.Users.Where(c => c.Id == HttpContext.Session.GetString("user")).Include("Credentials").FirstOrDefaultAsync();
 
                 // If someone already has that token OR there is a user that has the email but is not the same user.
                 if (userWithMatchingToken != null || (userWithMatchingEmail != null && userWithMatchingEmail.Email != user.Email))
@@ -330,12 +330,12 @@ namespace netcore_postgres_oauth_boiler.Controllers
 
             // Fetching data
             var userWithMatchingToken = await _context.Users.Where(c => c.Credentials.Any(cred => cred.Provider == AuthProvider.GITHUB && cred.Token == userinfo.Id)).FirstOrDefaultAsync();
-            var userWithMatchingEmail = await _context.Users.Where(c => c.Email != null && c.Email == userinfo.Email).FirstOrDefaultAsync();
+            var userWithMatchingEmail = await _context.Users.Where(c => userinfo.Email != null && c.Email == userinfo.Email).FirstOrDefaultAsync();
 
             // If user is logged in and the auth token is not registered yet, link.
             if (HttpContext.Session.GetString("user") != null)
             {
-                var user = await _context.Users.Where(c => c.Id == HttpContext.Session.GetString("user")).FirstOrDefaultAsync();
+                var user = await _context.Users.Where(c => c.Id == HttpContext.Session.GetString("user")).Include("Credentials").FirstOrDefaultAsync();
 
                 // If someone already has that token OR there is a user that has the email but is not the same user.
                 if (userWithMatchingToken != null || (userWithMatchingEmail != null && userWithMatchingEmail.Email != user.Email))
@@ -433,7 +433,7 @@ namespace netcore_postgres_oauth_boiler.Controllers
             // If user is logged in and the auth token is not registered yet, link.
             if (HttpContext.Session.GetString("user") != null)
             {
-                var user = await _context.Users.Where(c => c.Id == HttpContext.Session.GetString("user")).FirstOrDefaultAsync();
+                var user = await _context.Users.Where(c => c.Id == HttpContext.Session.GetString("user")).Include("Credentials").FirstOrDefaultAsync();
 
                 // If someone already has that token OR there is a user that has the email but is not the same user.
                 if (userWithMatchingToken != null)

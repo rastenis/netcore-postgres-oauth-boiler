@@ -34,11 +34,11 @@ namespace netcore_postgres_oauth_boiler.Models
             this.Id = Guid.NewGuid().ToString();
             this.Email = email;
             this.Password = BCrypt.Net.BCrypt.HashPassword(password);
-            this.Credentials = new List<Credential>();
         }
 
         public User()
         {
+            Credentials = new List<Credential>();
         }
 
         public string Id { get; set; }
