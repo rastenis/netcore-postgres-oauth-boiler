@@ -29,7 +29,7 @@ namespace netcore_postgres_oauth_boiler.Controllers
         {
             _context = context;
         }
-        public async Task<IActionResult> Profile()
+        public async Task<IActionResult> Index()
         {
             if (HttpContext.Session.GetString("user") == null)
             {
@@ -79,14 +79,14 @@ namespace netcore_postgres_oauth_boiler.Controllers
             if (user == null || user.Password == null)
             {
                 TempData["error"] = "You can not change your password.";
-                return View("Profile");
+                return View("Index");
             }
 
             // Validating password
             if (!Validator.validatePassword(newPassword))
             {
                 TempData["error"] = "Password must be between 6 and a 100 characters.";
-                return View("Profile");
+                return View("Index");
             }
 
             // Verifying and changing password
@@ -97,7 +97,7 @@ namespace netcore_postgres_oauth_boiler.Controllers
             catch (Exception e)
             {
                 TempData["error"] = "Incorrect old password!";
-                return View("Profile");
+                return View("Index");
             }
 
             // Saving changes
@@ -127,7 +127,7 @@ namespace netcore_postgres_oauth_boiler.Controllers
             if (submit == null || submit == "")
             {
                 TempData["error"] = $"No provider supplied.";
-                return View("Profile");
+                return View("Index");
             }
 
             // Uppercasing first letter for formatting
@@ -140,7 +140,7 @@ namespace netcore_postgres_oauth_boiler.Controllers
             if (!Enum.TryParse(submit.ToUpper(), out provider))
             {
                 TempData["error"] = $"Invalid provider.";
-                return View("Profile");
+                return View("Index");
             }
 
             Credential c = user.Credentials.FirstOrDefault(c => { return c.Provider == provider; });
@@ -155,7 +155,7 @@ namespace netcore_postgres_oauth_boiler.Controllers
                 {
                     // Should not be reachable.
                     TempData["error"] = $"You cannot unlink {submit}.";
-                    return View("Profile");
+                    return View("Index");
                 }
             }
             else
