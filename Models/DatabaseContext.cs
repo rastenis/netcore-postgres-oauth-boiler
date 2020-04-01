@@ -38,6 +38,7 @@ namespace netcore_postgres_oauth_boiler.Models
 
         public User()
         {
+            Credentials = new List<Credential>();
         }
 
         public string Id { get; set; }

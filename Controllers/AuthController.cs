@@ -37,11 +37,21 @@ namespace netcore_postgres_oauth_boiler.Controllers
         }
         public IActionResult Login()
         {
+            if (HttpContext.Session.GetString("user") != null)
+            {
+                return Redirect("/");
+            }
+
             return View();
         }
 
         public IActionResult Register()
         {
+            if (HttpContext.Session.GetString("user") != null)
+            {
+                return Redirect("/");
+            }
+
             return View();
         }
 
@@ -58,7 +68,7 @@ namespace netcore_postgres_oauth_boiler.Controllers
             if (HttpContext.Session.GetString("user") != null)
             {
                 TempData["error"] = "You are already logged in!";
-                return View("Login");
+                return Redirect("/");
             }
 
             // Fetching the user
@@ -92,13 +102,20 @@ namespace netcore_postgres_oauth_boiler.Controllers
             if (HttpContext.Session.GetString("user") != null)
             {
                 TempData["error"] = "You are already logged in!";
-                return View("Register");
+                return Redirect("/");
             }
 
             // Verifying data
             if (email == null || password == null)
             {
                 TempData["error"] = "Missing username or password!";
+                return View("Register");
+            }
+
+            // validating data
+            if (!Validator.validatePassword(password) || !Validator.validateEmail(email))
+            {
+                TempData["error"] = "Email must be valid and the password must be between 6 and a 100 characters.";
                 return View("Register");
             }
 
@@ -221,7 +238,7 @@ namespace netcore_postgres_oauth_boiler.Controllers
             // If user is logged in and the auth token is not registered yet, link.
             if (HttpContext.Session.GetString("user") != null)
             {
-                var user = await _context.Users.Where(c => c.Id == HttpContext.Session.GetString("user")).FirstOrDefaultAsync();
+                var user = await _context.Users.Where(c => c.Id == HttpContext.Session.GetString("user")).Include("Credentials").FirstOrDefaultAsync();
 
                 // If someone already has that token OR there is a user that has the email but is not the same user.
                 if (userWithMatchingToken != null || (userWithMatchingEmail != null && userWithMatchingEmail.Email != user.Email))
@@ -230,6 +247,10 @@ namespace netcore_postgres_oauth_boiler.Controllers
                     return Redirect("/");
                 }
 
+                if (user.Credentials == null)
+                {
+                    user.Credentials = new List<Credential>();
+                }
                 // Adding the token and saving
                 user.Credentials.Add(new Credential(AuthProvider.GOOGLE, validPayload.Subject));
                 await _context.SaveChangesAsync();
@@ -309,18 +330,23 @@ namespace netcore_postgres_oauth_boiler.Controllers
 
             // Fetching data
             var userWithMatchingToken = await _context.Users.Where(c => c.Credentials.Any(cred => cred.Provider == AuthProvider.GITHUB && cred.Token == userinfo.Id)).FirstOrDefaultAsync();
-            var userWithMatchingEmail = await _context.Users.Where(c => c.Email != null && c.Email == userinfo.Email).FirstOrDefaultAsync();
+            var userWithMatchingEmail = await _context.Users.Where(c => userinfo.Email != null && c.Email == userinfo.Email).FirstOrDefaultAsync();
 
             // If user is logged in and the auth token is not registered yet, link.
             if (HttpContext.Session.GetString("user") != null)
             {
-                var user = await _context.Users.Where(c => c.Id == HttpContext.Session.GetString("user")).FirstOrDefaultAsync();
+                var user = await _context.Users.Where(c => c.Id == HttpContext.Session.GetString("user")).Include("Credentials").FirstOrDefaultAsync();
 
                 // If someone already has that token OR there is a user that has the email but is not the same user.
                 if (userWithMatchingToken != null || (userWithMatchingEmail != null && userWithMatchingEmail.Email != user.Email))
                 {
                     TempData["error"] = "This Github account is already linked!";
                     return Redirect("/");
+                }
+
+                if (user.Credentials == null)
+                {
+                    user.Credentials = new List<Credential>();
                 }
 
                 // Adding the token and saving
@@ -407,13 +433,18 @@ namespace netcore_postgres_oauth_boiler.Controllers
             // If user is logged in and the auth token is not registered yet, link.
             if (HttpContext.Session.GetString("user") != null)
             {
-                var user = await _context.Users.Where(c => c.Id == HttpContext.Session.GetString("user")).FirstOrDefaultAsync();
+                var user = await _context.Users.Where(c => c.Id == HttpContext.Session.GetString("user")).Include("Credentials").FirstOrDefaultAsync();
 
                 // If someone already has that token OR there is a user that has the email but is not the same user.
                 if (userWithMatchingToken != null)
                 {
                     TempData["error"] = "This Reddit account is already linked!";
                     return Redirect("/");
+                }
+
+                if (user.Credentials == null)
+                {
+                    user.Credentials = new List<Credential>();
                 }
 
                 // Adding the token and saving

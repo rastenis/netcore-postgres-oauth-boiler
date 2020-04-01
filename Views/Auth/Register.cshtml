@@ -16,8 +16,8 @@
             <label for="password">Password</label>
         </div>
         <div class="input-field col s6">
-            <input id="password_conf" type="password" placeholder="Repeat password" required>
-            <label for="password_conf">Repeat Password</label>
+            <input id="passwordConfirmation" type="password" placeholder="Repeat password" required>
+            <label for="passwordConfirmation">Repeat Password</label>
         </div>
     </div>
     <button style="width:60%; margin-bottom:10px" class="waves-effect waves-light btn" type="submit">Submit</button>
@@ -26,7 +26,7 @@
 <script>
     function register() {
 
-        if (document.getElementById("password").value != document.getElementById("password_conf").value) {
+        if (document.getElementById("password").value != document.getElementById("passwordConfirmation").value) {
             M.toast({ html: "Passwords do not match!", classes: "red" });
             return false;
         }
