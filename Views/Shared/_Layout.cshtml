@@ -24,6 +24,7 @@
                     }
                     else
                     {
+                        <li><a asp-area="" asp-controller="Profile" asp-action="Profile">Profile</a></li>
                         <li style="font-weight:bold;"><a asp-area="" asp-controller="Auth" asp-action="Logout">Logout</a></li>
                     }
                 </ul>
@@ -51,7 +52,7 @@
 <script type="text/javascript">
     // Info box display
 
-    // TempData persists through redirects, but uses the session
+    // TempData persists through redirects
     // Use ViewData for passing regular data, such as in the HomeController -> Index example
     document.addEventListener('DOMContentLoaded', () => {
         if ('@TempData["info"]' != null && '@TempData["info"]' != "") {

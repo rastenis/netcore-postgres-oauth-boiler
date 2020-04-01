@@ -37,11 +37,21 @@ namespace netcore_postgres_oauth_boiler.Controllers
         }
         public IActionResult Login()
         {
+            if (HttpContext.Session.GetString("user") != null)
+            {
+                return Redirect("/");
+            }
+
             return View();
         }
 
         public IActionResult Register()
         {
+            if (HttpContext.Session.GetString("user") != null)
+            {
+                return Redirect("/");
+            }
+
             return View();
         }
 
@@ -58,7 +68,7 @@ namespace netcore_postgres_oauth_boiler.Controllers
             if (HttpContext.Session.GetString("user") != null)
             {
                 TempData["error"] = "You are already logged in!";
-                return View("Login");
+                return Redirect("/");
             }
 
             // Fetching the user
@@ -92,7 +102,7 @@ namespace netcore_postgres_oauth_boiler.Controllers
             if (HttpContext.Session.GetString("user") != null)
             {
                 TempData["error"] = "You are already logged in!";
-                return View("Register");
+                return Redirect("/");
             }
 
             // Verifying data
@@ -116,7 +126,7 @@ namespace netcore_postgres_oauth_boiler.Controllers
                 TempData["error"] = "This email is already taken!";
                 return View("Register");
             }
-            
+
             // Saving the user
             User u = new User(email, password);
             _context.Users.Add(u);
@@ -237,6 +247,10 @@ namespace netcore_postgres_oauth_boiler.Controllers
                     return Redirect("/");
                 }
 
+                if (user.Credentials == null)
+                {
+                    user.Credentials = new List<Credential>();
+                }
                 // Adding the token and saving
                 user.Credentials.Add(new Credential(AuthProvider.GOOGLE, validPayload.Subject));
                 await _context.SaveChangesAsync();
@@ -330,6 +344,11 @@ namespace netcore_postgres_oauth_boiler.Controllers
                     return Redirect("/");
                 }
 
+                if (user.Credentials == null)
+                {
+                    user.Credentials = new List<Credential>();
+                }
+
                 // Adding the token and saving
                 user.Credentials.Add(new Credential(AuthProvider.GITHUB, userinfo.Id));
                 await _context.SaveChangesAsync();
@@ -421,6 +440,11 @@ namespace netcore_postgres_oauth_boiler.Controllers
                 {
                     TempData["error"] = "This Reddit account is already linked!";
                     return Redirect("/");
+                }
+
+                if (user.Credentials == null)
+                {
+                    user.Credentials = new List<Credential>();
                 }
 
                 // Adding the token and saving

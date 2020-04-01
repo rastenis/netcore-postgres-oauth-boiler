@@ -1,8 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text.RegularExpressions;
-using System.Threading.Tasks;
+using System.Net.Mail;
 
 namespace netcore_postgres_oauth_boiler.Utilities
 {
@@ -10,12 +7,16 @@ namespace netcore_postgres_oauth_boiler.Utilities
     {
         public static bool validateEmail(string email)
         {
-            if (!Regex.IsMatch(email, @"\S +@\S +\.\S +"))
+            try
+            {
+                MailAddress m = new MailAddress(email);
+
+                return true;
+            }
+            catch (FormatException)
             {
                 return false;
             }
-
-            return true;
         }
 
         public static bool validatePassword(string password)

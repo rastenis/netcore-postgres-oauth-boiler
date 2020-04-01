@@ -29,8 +29,32 @@ namespace netcore_postgres_oauth_boiler.Controllers
         {
             _context = context;
         }
-        public IActionResult Profile()
+        public async Task<IActionResult> Profile()
         {
+            if (HttpContext.Session.GetString("user") == null)
+            {
+                return Redirect("/Auth/Login");
+            }
+
+            var user = await _context.Users.Where(c => Regex.IsMatch(c.Id, HttpContext.Session.GetString("user"))).FirstOrDefaultAsync();
+
+            if (user.Credentials == null)
+            {
+                user.Credentials = new List<Credential>();
+            }
+
+            ViewData["HasPassword"] = user.Password != null;
+
+            ViewData["GoogleLinked"] = user.Credentials.Exists(c => { return c.Provider == AuthProvider.GOOGLE; });
+            ViewData["GithubLinked"] = user.Credentials.Exists(c => { return c.Provider == AuthProvider.GITHUB; });
+            ViewData["RedditLinked"] = user.Credentials.Exists(c => { return c.Provider == AuthProvider.REDDIT; });
+
+            int amount = user.Credentials.Count;
+
+            ViewData["CanUnlinkGoogle"] = !(amount == 1 && (bool)ViewData["GoogleLinked"]);
+            ViewData["CanUnlinkGithub"] = !(amount == 1 && (bool)ViewData["GithubLinked"]);
+            ViewData["CanUnlinkReddit"] = !(amount == 1 && (bool)ViewData["RedditLinked"]);
+
             return View();
         }
 
