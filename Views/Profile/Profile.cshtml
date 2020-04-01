@@ -1,0 +1,30 @@
+﻿@{
+    ViewData["Title"] = "Profile";
+}
+<h2>@ViewData["Title"]</h2>
+
+<form class="col s12 compactForm" id="passwordChangeForm" action="/Profile/ChangePassword" method="post" onsubmit="return changePassword()">
+    <div class="row">
+        <div class="input-field col s6">
+            <input placeholder="Current Password" name="currentPassword" id="currentPassword" type="password" required>
+            <label for="password">Current Password</label>
+        </div>
+        <div class="input-field col s6">
+            <input id="newPassword" type="password" placeholder="New password" required>
+            <label for="newPassword">New Password</label>
+        </div>
+        <div class="input-field col s6">
+            <input id="newPasswordConfirmation" type="password" placeholder="Repeat password" required>
+            <label for="newPasswordConfirmation">Repeat New Password</label>
+        </div>
+    </div>
+    <button style="width:60%; margin-bottom:10px" class="waves-effect waves-light btn" type="submit">Submit</button>
+</form>
+
+<script>
+    function changePassword() {
+        if (document.getElementById("newPassword").value != document.getElementById("newPasswordConfirmation").value) {
+            M.toast({ html: "Passwords do not match!", classes: "red" });
+            return false;
+        }
+    }</script>
