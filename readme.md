@@ -1,5 +1,7 @@
 # netcore-postgres-oauth-boiler
 
+[![Status](https://travis-ci.org/scharkee/netcore-postgres-oauth-boiler.svg?branch=master)](https://travis-ci.org/scharkee/netcore-postgres-oauth-boiler)
+
 A basic .NET Core website boilerplate using PostgreSQL for storage, Adminer for db management, Let's Encrypt for SSL certificates and Nginx for routing.
 
 [Demo website.](https://netcore.demos.matasr.com)
