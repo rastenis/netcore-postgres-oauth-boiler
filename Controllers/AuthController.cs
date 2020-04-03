@@ -194,13 +194,15 @@ namespace netcore_postgres_oauth_boiler.Controllers
         [HttpGet]
         public async Task<IActionResult> GoogleCallback([FromQuery]IDictionary<string, string> query)
         {
-            if (query["code"] == null)
+            string code;
+            if (!query.TryGetValue("code", out code))
             {
+                TempData["info"] = "Link via Google failed. Google did not provide a temporary code!";
                 return Redirect("/");
             }
 
             Dictionary<string, string> parameters = new Dictionary<string, string>();
-            parameters["code"] = query["code"];
+            parameters["code"] = code;
             parameters["client_id"] = _oauthConfig.Value.Google.client_id;
             parameters["redirect_uri"] = $"https://{this.Request.Host}/Auth/GoogleCallback";
             parameters["client_secret"] = _oauthConfig.Value.Google.client_secret;
@@ -290,19 +292,20 @@ namespace netcore_postgres_oauth_boiler.Controllers
         [HttpGet]
         public async Task<IActionResult> GithubCallback([FromQuery]IDictionary<string, string> query)
         {
-
-            if (query["code"] == null)
+            string code;
+            if (!query.TryGetValue("code", out code))
             {
+                TempData["info"] = "Link via Github failed. Github did not provide a temporary code!";
                 return Redirect("/");
-
             }
+
+            // Requesting an access token from Github
             Dictionary<string, string> parameters = new Dictionary<string, string>();
-            parameters["code"] = query["code"];
+            parameters["code"] = code;
             parameters["client_id"] = _oauthConfig.Value.Github.client_id;
             parameters["redirect_uri"] = $"https://{this.Request.Host}/Auth/GithubCallback";
             parameters["client_secret"] = _oauthConfig.Value.Github.client_secret;
             parameters["state"] = Guid.NewGuid().ToString();
-
             GithubToken userToken = await requester.Post<GithubToken>("https://github.com/login/oauth/access_token", parameters);
 
             if (userToken == null)
@@ -317,18 +320,18 @@ namespace netcore_postgres_oauth_boiler.Controllers
                 return Redirect("/");
             }
 
+            // Requesting user data from Github
             Dictionary<string, string> headers = new Dictionary<string, string>();
             headers.Add("Authorization", $"token {userToken.access_token}");
-
             GithubUserInfo userinfo = await requester.Get<GithubUserInfo>("https://api.github.com/user", headers);
 
-            if (userinfo is null)
+            if (userinfo == null)
             {
                 TempData["error"] = "Github identity could not be resolved.";
                 return Redirect("/");
             }
 
-            // Fetching data
+            // Fetching existing user data
             var userWithMatchingToken = await _context.Users.Where(c => c.Credentials.Any(cred => cred.Provider == AuthProvider.GITHUB && cred.Token == userinfo.Id)).FirstOrDefaultAsync();
             var userWithMatchingEmail = await _context.Users.Where(c => userinfo.Email != null && c.Email == userinfo.Email).FirstOrDefaultAsync();
 
@@ -388,17 +391,20 @@ namespace netcore_postgres_oauth_boiler.Controllers
         [HttpGet]
         public async Task<IActionResult> RedditCallback([FromQuery]IDictionary<string, string> query)
         {
-            if (query["code"] == null)
+            string code;
+            if (!query.TryGetValue("code", out code))
             {
-                TempData["info"] = "Link via Reddit failed. Try again later.";
+                TempData["info"] = "Link via Reddit failed. Reddit did not provide a temporary code!";
                 return Redirect("/");
             }
 
+            // Constructing request for Reddit access token
             Dictionary<string, string> headers = new Dictionary<string, string>();
             var authBytes = Encoding.UTF8.GetBytes($"{_oauthConfig.Value.Reddit.client_id}:{_oauthConfig.Value.Reddit.client_secret}");
             headers.Add("Authorization", $"Basic {Convert.ToBase64String(authBytes)}");
 
-            RedditToken userToken = await requester.Post<RedditToken>("https://www.reddit.com/api/v1/access_token", null, headers, new StringContent($"grant_type=authorization_code&code={query["code"]}&redirect_uri=https://{this.Request.Host}/Auth/RedditCallback",
+            // Getting the access token
+            RedditToken userToken = await requester.Post<RedditToken>("https://www.reddit.com/api/v1/access_token", null, headers, new StringContent($"grant_type=authorization_code&code={code}&redirect_uri=https://{this.Request.Host}/Auth/RedditCallback",
                                               Encoding.UTF8,
                                               "application/x-www-form-urlencoded"));
 
@@ -414,18 +420,18 @@ namespace netcore_postgres_oauth_boiler.Controllers
                 return Redirect("/");
             }
 
+            // Getting user info
             headers = new Dictionary<string, string>();
             headers.Add("Authorization", $"bearer {userToken.access_token}");
-
             RedditUserInfo userinfo = await requester.Get<RedditUserInfo>("https://oauth.reddit.com/api/v1/me", headers);
 
-            if (userinfo is null)
+            if (userinfo == null)
             {
                 TempData["error"] = "Reddit identity could not be resolved.";
                 return Redirect("/");
             }
 
-            // Fetching data
+            // Fetching existing user data
             var userWithMatchingToken = await _context.Users.Where(c => c.Credentials.Any(cred => cred.Provider == AuthProvider.REDDIT && cred.Token == userinfo.Id)).FirstOrDefaultAsync();
 
             // Reddit does not have force-verified emails, so we do not look for email collisions.
